@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "strict": true,
+    "target": "es6",
+    "module": "es2015",
+    "moduleResolution": "node",
+    "jsx": "react",
+    "lib": ["dom", "es2017"],
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "strictNullChecks": false,
+    "noImplicitAny": false
+  },
+  "include": ["src"]
+}

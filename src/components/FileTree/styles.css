@@ -1,0 +1,19 @@
+.FileTree {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.FileTree__item {
+  color: #9ea4a7;
+  cursor: pointer;
+  padding: 0 15px;
+}
+
+.FileTree__item:hover:not(.FileTree__item--selected) {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.FileTree__item--selected {
+  color: white;
+  background: #3f3f46;
+}

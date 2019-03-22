@@ -1,0 +1,18 @@
+.Resizer {
+  z-index: 1;
+}
+.Resizer.horizontal {
+  flex-shrink: 0;
+  width: 100%;
+  height: 1px;
+  background: #4a4a4a;
+  cursor: row-resize;
+}
+
+.Resizer.vertical {
+  flex-shrink: 0;
+  height: 100%;
+  width: 1px;
+  background: #4a4a4a;
+  cursor: col-resize;
+}
