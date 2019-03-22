@@ -1,0 +1,11 @@
+# Browser that support *.wasm
+
+and_chr >= 71
+and_ff >= 64
+chrome >= 57
+edge >= 16
+firefox >= 52
+ios_saf >= 11
+op_mob >= 46
+opera >= 44
+safari >= 11
