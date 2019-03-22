@@ -1,4 +1,4 @@
-# moddable-webide
+# moddable-webide | [![Netlify Status](https://api.netlify.com/api/v1/badges/47caa840-a649-4096-9371-e6b8d82b0ce0/deploy-status)](https://app.netlify.com/sites/distracted-hoover-d4cde4/deploys)
 
 > WebIDE to get started with [Moddable-SDK](https://github.com/Moddable-OpenSource/moddable)
 
