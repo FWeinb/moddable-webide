@@ -3,13 +3,18 @@ import { jsx } from '@emotion/core';
 
 import React from 'react';
 import FileTree from '../FileTree';
+import InstrumentPanel from '../InstrumentPanel';
 import GistIcon from './GistIcon';
 import { useOvermind } from '../../overmind';
 
 const Sidebar: React.FunctionComponent = () => {
   const {
+    state: {
+      device: { instruments }
+    },
     actions: { openGist }
   } = useOvermind();
+
   return (
     <section
       role="Sidebar"
@@ -74,6 +79,11 @@ const Sidebar: React.FunctionComponent = () => {
         </header>
         <FileTree />
       </section>
+      {
+        <div css={{ marginTop: 'auto' }}>
+          {instruments && <InstrumentPanel />}
+        </div>
+      }
     </section>
   );
 };

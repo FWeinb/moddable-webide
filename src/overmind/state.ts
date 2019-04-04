@@ -24,9 +24,16 @@ export type Message = {
   text: string;
 };
 
+export type DeviceInstrument = {
+  name: string;
+  value: string;
+};
+
 export type Device = {
   host: string;
   xsbug: XsbugConnection;
+  instruments: Array<DeviceInstrument>;
+  stats: Array<number>;
 };
 
 export type Log = {
@@ -55,7 +62,9 @@ export type State = {
 export const state: State = {
   device: {
     host: 'runmod.local',
-    xsbug: null
+    xsbug: null,
+    instruments: null,
+    stats: null
   },
   editor: {
     currentFileName: undefined,

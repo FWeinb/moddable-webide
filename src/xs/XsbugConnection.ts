@@ -1,9 +1,219 @@
 const crlf = String.fromCharCode(13) + String.fromCharCode(10);
 
+type XsbugProperty = {
+  name: string;
+  value: string;
+  flags: {
+    value: string;
+    delete: boolean;
+    enum: boolean;
+    set: boolean;
+  };
+  property?: Array<XsbugProperty>;
+};
+
+type XsbugFrame = {
+  name: string;
+  value: string;
+  path?: string;
+  line?: number;
+};
+
+enum XsbugMessageType {
+  Login,
+  Frames,
+  Local,
+  Global,
+  Grammer,
+  Break,
+  Log,
+  InstrumentSample,
+  Instrument
+}
+
+type XsbugMessage = {
+  type: XsbugMessageType;
+};
+
+type XsbugLoginMessage = {
+  name: string;
+  value: string;
+} & XsbugMessage;
+
+type XsbugFramesMessage = {
+  frames: Array<XsbugFrame>;
+} & XsbugMessage;
+
+type XsbugLocalMessage = {
+  frame: XsbugFrame;
+  properties: Array<XsbugProperty>;
+} & XsbugMessage;
+
+type XsbugGlobalMessage = {
+  global: Array<XsbugProperty>;
+} & XsbugMessage;
+
+type XsbugGrammerMessage = {
+  grammer: Array<XsbugProperty>;
+} & XsbugMessage;
+
+type XsbugBreakMessage = {
+  path: string;
+  line: number;
+  message: string;
+} & XsbugMessage;
+
+type XsbugLogMessage = {
+  log: string;
+} & XsbugMessage;
+
+type XsbugInstrumentSampleMessage = {
+  samples: Array<number>;
+} & XsbugMessage;
+
+type XsbugInstrumentMessage = {
+  instruments: Array<{ name: string; value: string }>;
+} & XsbugMessage;
+
+const XsbugParseFrame = (node): XsbugFrame => {
+  const frame: XsbugFrame = {
+    name: node.attributes.name.value,
+    value: node.attributes.value.value
+  };
+  if (node.attributes.path) {
+    frame.path = node.attributes.path.value;
+    frame.line = parseInt(node.attributes.line.value);
+  }
+  return frame;
+};
+
+const XsbugParseProperty = (node): XsbugProperty => {
+  const flags = node.attributes.flags.value;
+  const property: XsbugProperty = {
+    name: node.attributes.name.value,
+    value: node.attributes.value.value,
+    flags: {
+      value: flags,
+      delete: flags.indexOf('C') < 0,
+      enum: flags.indexOf('E') < 0,
+      set: flags.indexOf('W') < 0
+    }
+  };
+
+  if (node.firstChild) {
+    property.property = [];
+    for (let p = node.firstChild; p; p = p.nextSibling)
+      property.property.push(XsbugParseProperty(p));
+    property.property.sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  return property;
+};
+
+const XsbugTypeParser = {
+  login(node): XsbugLoginMessage {
+    return {
+      type: XsbugMessageType.Login,
+      name: node.attributes.name.value,
+      value: node.attributes.value.value
+    };
+  },
+  samples(node): XsbugInstrumentSampleMessage {
+    return {
+      type: XsbugMessageType.InstrumentSample,
+      samples: node.textContent.split(',').map(value => parseInt(value))
+    };
+  },
+  frames(node): XsbugFramesMessage {
+    let frames = [];
+    for (node = node.firstChild; node; node = node.nextSibling) {
+      frames.push(XsbugParseFrame(node));
+    }
+    return {
+      type: XsbugMessageType.Frames,
+      frames
+    };
+  },
+  local(node): XsbugLocalMessage {
+    const frame = XsbugParseFrame(node);
+    let properties = [];
+    for (node = node.firstChild; node; node = node.nextSibling) {
+      properties.push(XsbugParseProperty(node));
+    }
+    properties.sort((a, b) => a.name.localeCompare(b.name));
+    return {
+      type: XsbugMessageType.Local,
+      frame,
+      properties
+    };
+  },
+  global(node): XsbugGlobalMessage {
+    const global = [];
+    for (node = node.firstChild; node; node = node.nextSibling) {
+      global.push(XsbugParseProperty(node));
+    }
+    global.sort((a, b) => a.name.localeCompare(b.name));
+    return {
+      type: XsbugMessageType.Global,
+      global
+    };
+  },
+  grammar(node): XsbugGrammerMessage {
+    const grammer = [];
+    for (node = node.firstChild; node; node = node.nextSibling) {
+      grammer.push(XsbugParseProperty(node));
+    }
+    grammer.sort((a, b) => a.name.localeCompare(b.name));
+    return {
+      type: XsbugMessageType.Grammer,
+      grammer
+    };
+  },
+  break(node): XsbugBreakMessage {
+    return {
+      type: XsbugMessageType.Break,
+      path: node.attributes.path.value,
+      line: parseInt(node.attributes.line.value),
+      message: node.textContent
+    };
+  },
+  log(node): XsbugLogMessage {
+    return {
+      type: XsbugMessageType.Log,
+      log: node.textContent
+    };
+  },
+  instruments(node): XsbugInstrumentMessage {
+    let instruments = [];
+    for (node = node.firstChild; node; node = node.nextSibling) {
+      instruments.push({
+        name: node.attributes.name.value,
+        value: node.attributes.value.value
+      });
+    }
+    return {
+      type: XsbugMessageType.Instrument,
+      instruments
+    };
+  }
+};
+
+const XsbugMessageParser = (xml: Document): Array<XsbugMessage> => {
+  const root = xml.documentElement;
+  if ('xsbug' !== root.nodeName) throw new Error('not xsbug xml');
+  const messages = [];
+  for (let node: Node = root.firstChild; node; node = node.nextSibling) {
+    messages.push(XsbugTypeParser[node.nodeName](node));
+  }
+  return messages;
+};
+
 export default class XsbugConnection {
   private socket: WebSocket;
+  private parser: DOMParser;
 
   constructor(uri: string) {
+    this.parser = new DOMParser();
     this.socket = new WebSocket(uri);
 
     this.socket.onopen = this.onopen.bind(this);
@@ -22,17 +232,35 @@ export default class XsbugConnection {
   }
   onmessage(event) {
     console.log('WS RECEIVE ' + event.data);
-
-    const msg = new XsbugMessage(
-      new DOMParser().parseFromString(event.data, 'application/xml')
+    const msg = XsbugMessageParser(
+      this.parser.parseFromString(event.data, 'application/xml')
     );
-    if (msg.break) this.onBreak(msg);
-    else if (msg.login) this.onLogin(msg);
-    else if (msg.instruments) this.onInstrumentationConfigure(msg);
-    else if (msg.local) this.onLocal(msg);
-    else if (msg.log) this.onLog(msg);
-    else if (msg.samples) this.onInstrumentationSamples(msg);
-    else debugger; // unhandled
+    msg.forEach(message => {
+      switch (message.type) {
+        case XsbugMessageType.Login:
+          this.onLogin(message as XsbugLoginMessage);
+          break;
+        case XsbugMessageType.Log:
+          this.onLog(message as XsbugLogMessage);
+          break;
+        case XsbugMessageType.Break:
+          this.onBreak(message as XsbugBreakMessage);
+          break;
+        case XsbugMessageType.Local:
+          this.onLocal(message as XsbugLocalMessage);
+          break;
+        case XsbugMessageType.Instrument:
+          this.onInstrumentationConfigure(message as XsbugInstrumentMessage);
+          break;
+        case XsbugMessageType.InstrumentSample:
+          this.onInstrumentationSamples(
+            message as XsbugInstrumentSampleMessage
+          );
+          break;
+        default:
+          break;
+      }
+    });
   }
   send(data) {
     console.log('WS SEND ' + data);
@@ -75,146 +303,15 @@ export default class XsbugConnection {
     this.sendCommand(`<toggle id="${value}"/>`);
   }
   // receive messages
-  onBreak(msg) {}
-  onLogin(msg) {}
-  onInstrumentationConfigure(msg) {}
-  onInstrumentationSamples(msg) {}
-  onLocal(msg) {}
-  onLog(msg) {}
+  onBreak(msg: XsbugBreakMessage) {}
+  onLogin(msg: XsbugLoginMessage) {}
+  onInstrumentationConfigure(msg: XsbugInstrumentMessage) {}
+  onInstrumentationSamples(msg: XsbugInstrumentSampleMessage) {}
+  onLocal(msg: XsbugLocalMessage) {}
+  onLog(msg: XsbugLogMessage) {}
 
   // helpers
   sendCommand(msg) {
     this.send(crlf + msg + crlf);
-  }
-}
-
-type Frame = {
-  name: string;
-  value: string;
-  message?: string;
-  path?: string;
-  line?: number;
-  properties?: Array<Property>;
-};
-
-type Property = {
-  name: string;
-  value: string;
-  flags: {
-    value: string;
-    delete: boolean;
-    enum: boolean;
-    set: boolean;
-  };
-  property?: Array<Property>;
-};
-
-class XsbugMessage {
-  login?: Frame;
-  samples?: string;
-  frames?: Array<Frame>;
-  properties?: Array<Property>;
-  break?: Frame;
-  log?: Frame;
-  instruments?: Array<Frame>;
-  local: Frame;
-
-  constructor(xml) {
-    xml = xml.documentElement;
-    if ('xsbug' !== xml.nodeName) throw new Error('not xsbug xml');
-    for (let node = xml.firstChild; node; node = node.nextSibling) {
-      XsbugMessage[node.nodeName](this, node);
-    }
-    return;
-  }
-
-  // node parsers
-  static login(message, node) {
-    message.login = {
-      name: node.attributes.name.value,
-      value: node.attributes.value.value
-    };
-  }
-  static samples(message, node) {
-    message.samples = node.textContent.split(',').map(value => parseInt(value));
-  }
-  static frames(message, node) {
-    message.frames = [];
-    for (node = node.firstChild; node; node = node.nextSibling)
-      message.frames.push(XsbugMessage.oneFrame(node));
-  }
-  static local(message, node) {
-    const local = XsbugMessage.oneFrame(node);
-    local.properties = [];
-    for (node = node.firstChild; node; node = node.nextSibling)
-      local.properties.push(XsbugMessage.oneProperty(node));
-    message.local = local;
-  }
-  static global(message, node) {
-    message.global = [];
-    for (node = node.firstChild; node; node = node.nextSibling)
-      message.global.push(XsbugMessage.oneProperty(node));
-    message.global.sort((a, b) => a.name.localeCompare(b.name));
-  }
-  static grammar(message, node) {
-    message.module = [];
-    for (node = node.firstChild; node; node = node.nextSibling)
-      message.module.push(XsbugMessage.oneProperty(node));
-
-    message.module.sort((a, b) => a.name.localeCompare(b.name));
-  }
-  static break(message, node) {
-    message.break = {
-      path: node.attributes.path.value,
-      line: parseInt(node.attributes.line.value),
-      message: node.textContent
-    };
-  }
-  static log(message, node) {
-    message.log = node.textContent;
-  }
-  static instruments(message, node) {
-    message.instruments = [];
-    for (node = node.firstChild; node; node = node.nextSibling) {
-      message.instruments.push({
-        name: node.attributes.name.value,
-        value: node.attributes.value.value
-      });
-    }
-  }
-
-  // helpers
-  static oneFrame(node) {
-    const frame: Frame = {
-      name: node.attributes.name.value,
-      value: node.attributes.value.value
-    };
-    if (node.attributes.path) {
-      frame.path = node.attributes.path.value;
-      frame.line = parseInt(node.attributes.line.value);
-    }
-    return frame;
-  }
-  static oneProperty(node) {
-    const flags = node.attributes.flags.value;
-    const property: Property = {
-      name: node.attributes.name.value,
-      value: node.attributes.value.value,
-      flags: {
-        value: flags,
-        delete: flags.indexOf('C') < 0,
-        enum: flags.indexOf('E') < 0,
-        set: flags.indexOf('W') < 0
-      }
-    };
-
-    if (node.firstChild) {
-      property.property = [];
-      for (let p = node.firstChild; p; p = p.nextSibling)
-        property.property.push(XsbugMessage.oneProperty(p));
-      property.property.sort((a, b) => a.name.localeCompare(b.name));
-    }
-
-    return property;
   }
 }

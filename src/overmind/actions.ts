@@ -80,20 +80,29 @@ export const connectDebugger: Action = ({ state, effects }) => {
     text: 'Start debugging...'
   });
 
-  state.device.xsbug = effects.connectDebugger(
-    `ws://${state.device.host}:8080`
-  );
+  const xsbug = effects.connectDebugger(`ws://${state.device.host}:8080`);
 
-  state.device.xsbug.onLogin = () => {
-    state.device.xsbug.doGo();
+  xsbug.onInstrumentationConfigure = config => {
+    state.device.instruments = config.instruments;
   };
-  state.device.xsbug.onLog = msg => {
+
+  xsbug.onInstrumentationSamples = config => {
+    state.device.stats = config.samples;
+  };
+
+  xsbug.onLogin = () => {
+    xsbug.doGo();
+  };
+
+  xsbug.onLog = msg => {
     state.log.messages.push({
       type: 'debug',
       time: Date.now(),
       text: msg.log
     });
   };
+
+  state.device.xsbug = xsbug;
 };
 
 // Editor
