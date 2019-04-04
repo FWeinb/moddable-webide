@@ -36,7 +36,13 @@ const FileTab: React.FunctionComponent<{
 
 const EditorTopBar: React.FunctionComponent = () => {
   const {
-    actions: { setDeviceHostName, compileAndUpload, openFile, closeFile },
+    actions: {
+      setDeviceHostName,
+      compileAndUpload,
+      connectDebugger,
+      openFile,
+      closeFile
+    },
     state: {
       device: { host },
       editor: { openFiles, currentFile },
@@ -127,6 +133,22 @@ const EditorTopBar: React.FunctionComponent = () => {
           }}
         >
           <FlashIcon />
+        </button>
+        <button
+          onClick={connectDebugger}
+          disabled={compilerNotReady}
+          title="Debug"
+          css={{
+            webkitAppearance: 'none',
+            all: 'unset',
+            cursor: 'pointer',
+            margin: '0 0.5em'
+          }}
+          style={{
+            opacity: compilerNotReady ? 0.1 : 1
+          }}
+        >
+          Debug
         </button>
       </section>
     </section>

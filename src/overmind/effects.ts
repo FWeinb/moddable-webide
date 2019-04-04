@@ -1,5 +1,6 @@
 import { FileMap, File } from './state';
 import XSCL from '../xs/index';
+import XsbugConnection from '../xs/XsbugConnection';
 
 export const loadGist = async (gistId: string): Promise<FileMap> => {
   const response = await fetch(`https://api.github.com/gists/${gistId}`);
@@ -38,4 +39,8 @@ export const loadCompiler = (): Promise<XSCL> => {
 export const compile = async (files: File[]): Promise<Uint8Array> => {
   const compiledFiles = await xscl.compile(files);
   return await xscl.link(compiledFiles);
+};
+
+export const connectDebugger = (url: string): XsbugConnection => {
+  return new XsbugConnection(url);
 };

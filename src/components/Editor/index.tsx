@@ -143,7 +143,6 @@ const Editor: React.FunctionComponent = () => {
         // Register change listener
         model.onDidChangeContent(() => {
           const state = editorStats.current[currentFile.name];
-          console.log(state.version, model.getAlternativeVersionId());
           updateFile({
             name,
             dirty: state.version !== model.getAlternativeVersionId()

@@ -1,4 +1,4 @@
-import { Derive } from 'overmind';
+import XsbugConnection from '../xs/XsbugConnection';
 
 export type File = {
   name: string;
@@ -26,6 +26,7 @@ export type Message = {
 
 export type Device = {
   host: string;
+  xsbug: XsbugConnection;
 };
 
 export type Log = {
@@ -53,7 +54,8 @@ export type State = {
 
 export const state: State = {
   device: {
-    host: 'runmod.local'
+    host: 'runmod.local',
+    xsbug: null
   },
   editor: {
     currentFileName: undefined,

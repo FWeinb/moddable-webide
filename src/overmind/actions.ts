@@ -73,6 +73,29 @@ export const compileAndUpload: Action = async ({ state, effects }) => {
   }
 };
 
+export const connectDebugger: Action = ({ state, effects }) => {
+  state.log.messages.push({
+    type: 'debug',
+    time: Date.now(),
+    text: 'Start debugging...'
+  });
+
+  state.device.xsbug = effects.connectDebugger(
+    `ws://${state.device.host}:8080`
+  );
+
+  state.device.xsbug.onLogin = () => {
+    state.device.xsbug.doGo();
+  };
+  state.device.xsbug.onLog = msg => {
+    state.log.messages.push({
+      type: 'debug',
+      time: Date.now(),
+      text: msg.log
+    });
+  };
+};
+
 // Editor
 
 export const removeFiles: Action = async ({ state }) => {
