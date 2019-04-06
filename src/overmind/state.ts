@@ -29,9 +29,16 @@ export type DeviceInstrument = {
   value: string;
 };
 
+export enum DeviceInstrumentConnectionState {
+  DISCONNECTED,
+  CONNECTING,
+  CONNECTED,
+  ERROR
+}
+
 export type Device = {
   host: string;
-  xsbug: XsbugConnection;
+  debugConnectionState: DeviceInstrumentConnectionState;
   instruments: Array<DeviceInstrument>;
   stats: Array<number>;
 };
@@ -52,7 +59,17 @@ export type Compiler = {
   errors?: string[];
 };
 
+export enum SidebarView {
+  FileExplorer,
+  Debug
+}
+
+export type IDE = {
+  selectedSidebarView: SidebarView;
+};
+
 export type State = {
+  ide: IDE;
   device: Device;
   editor: Editor;
   compiler: Compiler;
@@ -60,9 +77,12 @@ export type State = {
 };
 
 export const state: State = {
+  ide: {
+    selectedSidebarView: SidebarView.FileExplorer
+  },
   device: {
     host: 'runmod.local',
-    xsbug: null,
+    debugConnectionState: DeviceInstrumentConnectionState.DISCONNECTED,
     instruments: null,
     stats: null
   },

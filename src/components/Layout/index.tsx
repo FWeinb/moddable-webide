@@ -3,7 +3,7 @@ import { jsx } from '@emotion/core';
 
 import './styles.css';
 
-import React, { useRef } from 'react';
+import React from 'react';
 import SplitPane from 'react-split-pane';
 
 type Props = {
@@ -19,13 +19,18 @@ const Layout: React.FunctionComponent<Props> = ({
   ...reset
 }) => {
   return (
-    <SplitPane {...reset} split="vertical" minSize={150} defaultSize={200}>
+    <SplitPane
+      {...reset}
+      style={{ position: 'relative' }}
+      split="vertical"
+      minSize={150}
+      defaultSize={200}
+    >
       <React.Fragment>{sidebar && sidebar()}</React.Fragment>
       <SplitPane
         split="horizontal"
         pane2Style={{
-          overflow: 'auto',
-          background: 'var(--color-background)'
+          overflow: 'hidden'
         }}
         defaultSize="85%"
       >

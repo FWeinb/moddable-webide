@@ -1,8 +1,14 @@
 .Resizer {
   z-index: 1;
 }
-.Resizer.horizontal {
+
+.Resizer.horizontal,
+.Resizer.vertical {
   flex-shrink: 0;
+  position: relative;
+}
+
+.Resizer.horizontal {
   width: 100%;
   height: 1px;
   background: #4a4a4a;
@@ -10,9 +16,23 @@
 }
 
 .Resizer.vertical {
-  flex-shrink: 0;
   height: 100%;
-  width: 1px;
-  background: #4a4a4a;
   cursor: col-resize;
+}
+
+.Resizer.vertical::after,
+.Resizer.horizontal::after {
+  content: '';
+  position: absolute;
+}
+
+.Resizer.vertical::after {
+  height: 100%;
+  left: -1px;
+  width: 2px;
+}
+
+.Resizer.horizontal::after {
+  height: 2px;
+  width: 100%;
 }

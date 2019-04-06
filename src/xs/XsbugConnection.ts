@@ -208,30 +208,56 @@ const XsbugMessageParser = (xml: Document): Array<XsbugMessage> => {
   return messages;
 };
 
+function exponentialBackoff(toTry, max, delay, callback) {
+  var result = toTry();
+
+  if (result) {
+    callback(result);
+  } else {
+    if (max > 0) {
+      setTimeout(function() {
+        exponentialBackoff(toTry, --max, delay * 2, callback);
+      }, delay);
+    }
+  }
+}
+
 export default class XsbugConnection {
-  private socket: WebSocket;
+  private attempts: number;
+  private uri: string;
+  private socket: WebSocket & { timeout?: NodeJS.Timeout };
   private parser: DOMParser;
 
   constructor(uri: string) {
+    this.uri = uri;
     this.parser = new DOMParser();
-    this.socket = new WebSocket(uri);
+    this.attempts = 0;
+    this.initSocket();
+  }
+  private initSocket() {
+    this.socket = new WebSocket(this.uri, ['x-xsbug']);
+    this.socket.onopen = this.onOpen.bind(this);
+    this.socket.onclose = this.onClose.bind(this);
+    this.socket.onerror = this.onError.bind(this);
+    this.socket.onmessage = this.onMessage.bind(this);
+    this.attempts++;
+  }
 
-    this.socket.onopen = this.onopen.bind(this);
-    this.socket.onclose = this.onclose.bind(this);
-    this.socket.onerror = this.onerror.bind(this);
-    this.socket.onmessage = this.onmessage.bind(this);
+  onOpen() {
+    console.log('Connected');
+    clearTimeout(this.socket.timeout);
   }
-  onopen() {
-    console.log('WS OPEN');
+  onClose() {
+    if (this.attempts < 5) {
+      console.log('Retry in ' + 250 * Math.pow(2, this.attempts));
+      setTimeout(() => this.initSocket(), 250 * Math.pow(2, this.attempts));
+    }
   }
-  onclose() {
-    console.log('WS CLOSE');
-  }
-  onerror() {
+  onError() {
     console.log('WS ERROR');
+    this.onClose();
   }
-  onmessage(event) {
-    console.log('WS RECEIVE ' + event.data);
+  onMessage(event) {
     const msg = XsbugMessageParser(
       this.parser.parseFromString(event.data, 'application/xml')
     );
@@ -263,7 +289,6 @@ export default class XsbugConnection {
     });
   }
   send(data) {
-    console.log('WS SEND ' + data);
     return this.socket.send(data);
   }
   // transmit message

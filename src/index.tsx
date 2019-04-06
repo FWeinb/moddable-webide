@@ -6,10 +6,13 @@ import ReactDOM from 'react-dom';
 
 import { Global, css } from '@emotion/core';
 
+import SidebarViewContainer from './components/SidebarViewContainer';
+
 import Layout from './components/Layout';
-import Sidebar from './components/Sidebar';
-import EditorContainer from './components/EditorContainer';
 import Log from './components/Log';
+import Editor from './components/Editor';
+import TopBar from './components/TopBar';
+import ActivityBar from './components/ActivityBar';
 
 const App: React.FunctionComponent = () => {
   return (
@@ -18,7 +21,9 @@ const App: React.FunctionComponent = () => {
         styles={css`
           * {
             box-sizing: border-box;
+            user-select: none;
           }
+
           html,
           body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
@@ -26,22 +31,69 @@ const App: React.FunctionComponent = () => {
               'Segoe UI Emoji', 'Segoe UI Symbol';
             margin: 0;
             padding: 0;
-            background: var(--color-background);
+            background: var(--color-darkest);
             overflow: hidden;
             color: white;
           }
 
+          html,
+          body,
+          #root  {
+            height: 100%;
+            width: 100%;
+          }
+
           :root {
-            --color-sidebar-background: #252526;
-            --color-background: #1e1e1e;
+            --color-lightest: #3b3b3b;
+            --color-light: #2d2d2d;
+            --color-dark: #252526;
+            --color-darkest: #1e1e1e;
+
+            --color-accent: #175a89;
+            --color-text: rgba(255, 255, 255, 0.5);
+            --color-text-muted: rgba(255, 255, 255, 0.5);
+          }
+          .scrolling::-webkit-scrollbar {
+            width: 13px;
+            height: 0;
+          }
+
+          .scrolling::-webkit-scrollbar-thumb {
+            background-color: rgba(255, 255, 255, 0.15);
+            outline: none;
           }
         `}
       />
-      <Layout
-        sidebar={() => <Sidebar />}
-        content={() => <EditorContainer />}
-        log={() => <Log />}
-      />
+      <div
+        css={{
+          display: 'grid',
+          gridTemplateColumns: '50px auto',
+          gridTemplateRows: '40px auto',
+          justifyItems: 'stretch',
+          alignItems: 'stretch',
+          height: '100%'
+        }}
+      >
+        <div
+          css={{
+            gridRow: 1,
+            gridColumn: '1 / 3',
+            background: 'var(--color-lightest)'
+          }}
+        >
+          <TopBar />
+        </div>
+        <div css={{ gridRow: 2, gridColumn: 1 }}>
+          <ActivityBar />
+        </div>
+        <div css={{ gridRow: 2, gridColumn: 2 }}>
+          <Layout
+            content={() => <Editor />}
+            sidebar={() => <SidebarViewContainer />}
+            log={() => <Log />}
+          />
+        </div>
+      </div>
     </React.Fragment>
   );
 };

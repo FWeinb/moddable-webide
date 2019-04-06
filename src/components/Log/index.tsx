@@ -15,26 +15,23 @@ const Log: React.FunctionComponent = () => {
 
   useEffect(() => {
     if (scrollContainerRef.current) {
+      console.log('OK');
       scrollContainerRef.current.scrollTop =
         scrollContainerRef.current.scrollHeight;
     }
-  });
+  }, [messages.length]);
 
   return (
     <section
       css={{
-        position: 'relative',
         display: 'flex',
         flexDirection: 'column',
-        fontFamily: 'Menlo, Monaco, "Courier New", monospace'
+        height: '100%',
+        background: 'var(--color-darkest)'
       }}
-      ref={scrollContainerRef}
     >
       <header
         css={{
-          position: 'fixed',
-          background: 'var(--color-background)',
-          width: '100%',
           padding: '0.5em',
           color: '#DAD9DA'
         }}
@@ -43,12 +40,14 @@ const Log: React.FunctionComponent = () => {
       </header>
       <section
         css={{
-          padding: '2em .5em',
-          marginTop: '1em',
+          padding: '.5em',
           color: 'white',
           fontSize: '12px',
-          lineHeight: '16px'
+          lineHeight: '16px',
+          overflow: 'scroll'
         }}
+        ref={scrollContainerRef}
+        className="scrolling"
       >
         {messages.map(message => {
           return <div key={message.time}> {message.text}</div>;

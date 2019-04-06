@@ -1,6 +1,12 @@
 import { Action } from 'overmind';
 import { files as sampleFiles } from './defaultFiles';
-import { File, CompilerState, FileMap } from './state';
+import {
+  File,
+  CompilerState,
+  FileMap,
+  SidebarView,
+  DeviceInstrumentConnectionState
+} from './state';
 import { VALUE } from 'proxy-state-tree';
 
 // Sample Data
@@ -29,7 +35,7 @@ export const setDeviceHostName: Action<string> = ({ state }, hostName) => {
 };
 
 // Compiler
-export const compileAndUpload: Action = async ({ state, effects }) => {
+export const compileAndUpload: Action = async ({ state, effects, actions }) => {
   state.log.messages = [];
   state.compiler.state = CompilerState.BUSY;
   try {
@@ -43,6 +49,9 @@ export const compileAndUpload: Action = async ({ state, effects }) => {
       text: 'Uploading...'
     });
 
+    // Enable debugging
+    await fetch(`http://${state.device.host}/mod/config/when/debug`);
+
     const response = await fetch(`http://${state.device.host}/mod/install`, {
       method: 'PUT',
       body: file
@@ -52,7 +61,7 @@ export const compileAndUpload: Action = async ({ state, effects }) => {
 
     state.log.messages.push({
       type: 'log',
-      time: Date.now(),
+      time: performance.now(),
       text: 'Done, Response: ' + text
     });
   } catch (e) {
@@ -62,7 +71,7 @@ export const compileAndUpload: Action = async ({ state, effects }) => {
     }
     state.log.messages.push({
       type: 'error',
-      time: Date.now(),
+      time: performance.now(),
       text: 'Error: ' + message
     });
   } finally {
@@ -76,10 +85,12 @@ export const compileAndUpload: Action = async ({ state, effects }) => {
 export const connectDebugger: Action = ({ state, effects }) => {
   state.log.messages.push({
     type: 'debug',
-    time: Date.now(),
+    time: performance.now(),
     text: 'Start debugging...'
   });
 
+  state.device.debugConnectionState =
+    DeviceInstrumentConnectionState.CONNECTING;
   const xsbug = effects.connectDebugger(`ws://${state.device.host}:8080`);
 
   xsbug.onInstrumentationConfigure = config => {
@@ -90,19 +101,27 @@ export const connectDebugger: Action = ({ state, effects }) => {
     state.device.stats = config.samples;
   };
 
+  xsbug.onClose = () => {
+    state.device.debugConnectionState =
+      DeviceInstrumentConnectionState.DISCONNECTED;
+  };
+  xsbug.onError = () => {
+    state.device.debugConnectionState = DeviceInstrumentConnectionState.ERROR;
+  };
+
   xsbug.onLogin = () => {
+    state.device.debugConnectionState =
+      DeviceInstrumentConnectionState.CONNECTED;
     xsbug.doGo();
   };
 
   xsbug.onLog = msg => {
     state.log.messages.push({
       type: 'debug',
-      time: Date.now(),
+      time: performance.now(),
       text: msg.log
     });
   };
-
-  state.device.xsbug = xsbug;
 };
 
 // Editor
@@ -167,4 +186,12 @@ export const updateFile: Action<
   }
 
   effects.saveToLocalStorage(state.editor.files);
+};
+
+// IDE
+export const setActiveSidebarView: Action<SidebarView> = (
+  { state },
+  newActiveSidebar
+) => {
+  state.ide.selectedSidebarView = newActiveSidebar;
 };
