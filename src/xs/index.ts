@@ -7,7 +7,6 @@ type FileObject = {
 
 type MessageType = {
   type: 'error' | 'log';
-  time: number;
   text: string;
 };
 

@@ -8,23 +8,21 @@ import DebugIcon from '../Icons/DebugIcon';
 import ActivityBarButton from './ActivityBarButton';
 
 import { useOvermind } from '../../overmind';
-import {
-  SidebarView,
-  DeviceInstrumentConnectionState
-} from '../../overmind/state';
+import { SidebarView } from '../../overmind/rootState';
+import { DebugState } from '../../overmind/Device/state';
 
 const FileExplorerButton: React.FC = () => {
   const {
-    state: {
-      ide: { selectedSidebarView }
-    },
+    state: { selectedSidebarView },
     actions: { setActiveSidebarView }
   } = useOvermind();
 
   return (
     <ActivityBarButton
       selected={selectedSidebarView === SidebarView.FileExplorer}
-      onClick={() => setActiveSidebarView(SidebarView.FileExplorer)}
+      onClick={() => {
+        setActiveSidebarView(SidebarView.FileExplorer);
+      }}
     >
       <FileIcon />
     </ActivityBarButton>
@@ -33,31 +31,26 @@ const FileExplorerButton: React.FC = () => {
 
 const DebugButton: React.FC = () => {
   const {
-    state: {
-      ide: { selectedSidebarView },
-      device: { debugConnectionState }
-    },
+    state: { selectedSidebarView, Device: DeviceState },
     actions: { setActiveSidebarView }
   } = useOvermind();
 
   let debugIndicatorColor = undefined;
-  switch (debugConnectionState) {
-    case DeviceInstrumentConnectionState.CONNECTED:
+  switch (DeviceState.debug.state) {
+    case DebugState.CONNECTED:
       debugIndicatorColor = '#3ebf44';
       break;
-    case DeviceInstrumentConnectionState.CONNECTING:
+    case DebugState.CONNECTING:
       debugIndicatorColor = '#037acc';
       break;
-    case DeviceInstrumentConnectionState.ERROR:
+    case DebugState.ERROR:
       debugIndicatorColor = 'red';
       break;
   }
 
   return (
     <ActivityBarButton
-      disabled={
-        debugConnectionState !== DeviceInstrumentConnectionState.CONNECTED
-      }
+      disabled={DeviceState.debug.state !== DebugState.CONNECTED}
       selected={selectedSidebarView === SidebarView.Debug}
       onClick={() => setActiveSidebarView(SidebarView.Debug)}
     >
@@ -67,14 +60,6 @@ const DebugButton: React.FC = () => {
 };
 
 const ActivityBar: React.FunctionComponent = () => {
-  const {
-    state: {
-      ide: { selectedSidebarView },
-      device: { debugConnectionState }
-    },
-    actions: { setActiveSidebarView }
-  } = useOvermind();
-
   return (
     <div
       css={{

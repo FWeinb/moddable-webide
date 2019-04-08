@@ -3,9 +3,8 @@ import { jsx } from '@emotion/core';
 
 import React from 'react';
 import { useOvermind } from '../../overmind';
-import FlashIcon from '../Icons/FlashIcon';
-import { CompilerState, File } from '../../overmind/state';
-import { connectDebugger } from '../../overmind/actions';
+
+import { File } from '../../overmind/rootState';
 
 const FileTab: React.FunctionComponent<{
   file: File;
@@ -23,9 +22,14 @@ const FileTab: React.FunctionComponent<{
         flexDirection: 'row',
         alignItems: 'center',
         padding: '.25em .5em',
-        cursor: 'pointer'
+        cursor: 'pointer',
+        height: '100%'
       }}
-      style={open ? { background: 'var(--color-darkest)' } : undefined}
+      style={
+        open
+          ? { color: 'var(--color-text)', background: 'var(--color-darkest)' }
+          : undefined
+      }
     >
       <div onClick={() => !open && onOpen()} css={{ marginRight: '1em' }}>
         {file ? file.name + (file.dirty ? '*' : '') : ''}
@@ -37,45 +41,44 @@ const FileTab: React.FunctionComponent<{
 
 const EditorTopBar: React.FunctionComponent = () => {
   const {
-    actions: { openFile, closeFile },
+    actions: {
+      Editor: { openFile, closeFile }
+    },
     state: {
-      editor: { openFiles, currentFile }
+      Editor: { activeFile, openTabs, files }
     }
   } = useOvermind();
 
   return (
-    <section
-      css={{
-        display: 'flex',
-        flexDirection: 'row',
-        flex: '0 0 auto',
-        alignItems: 'center',
-        height: '30px',
-        width: '100%',
-        position: 'relative',
-        background: 'var(--color-dark)'
-      }}
-    >
-      <header
+    openTabs &&
+    openTabs.length > 0 && (
+      <section
         css={{
           display: 'flex',
           flexDirection: 'row',
-          color: '#fff',
-          height: '100%',
+          flex: '0 0 auto',
+          alignItems: 'center',
+          height: '30px',
+          width: '100%',
+          position: 'relative',
+          color: 'var(--color-text-muted)',
+          background: 'var(--color-dark)',
           fontSize: '0.9em'
         }}
       >
-        {openFiles.map(file => (
-          <FileTab
-            key={file.name}
-            file={file}
-            open={currentFile && file.name === currentFile.name}
-            onOpen={() => openFile(file.name)}
-            onClose={() => closeFile(file.name)}
-          />
-        ))}
-      </header>
-    </section>
+        {openTabs
+          .map(tab => files[tab])
+          .map(file => (
+            <FileTab
+              key={file.name}
+              file={file}
+              open={activeFile && file.name === activeFile.name}
+              onOpen={() => openFile(file.name)}
+              onClose={() => closeFile(file.name)}
+            />
+          ))}
+      </section>
+    )
   );
 };
 

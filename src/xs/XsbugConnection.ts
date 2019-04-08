@@ -78,7 +78,7 @@ type XsbugInstrumentMessage = {
 const XsbugParseFrame = (node): XsbugFrame => {
   const frame: XsbugFrame = {
     name: node.attributes.name.value,
-    value: node.attributes.value.value
+    value: node.attributes.value && node.attributes.value.value
   };
   if (node.attributes.path) {
     frame.path = node.attributes.path.value;
@@ -91,7 +91,7 @@ const XsbugParseProperty = (node): XsbugProperty => {
   const flags = node.attributes.flags.value;
   const property: XsbugProperty = {
     name: node.attributes.name.value,
-    value: node.attributes.value.value,
+    value: node.attributes.value && node.attributes.value.value,
     flags: {
       value: flags,
       delete: flags.indexOf('C') < 0,
@@ -223,41 +223,64 @@ function exponentialBackoff(toTry, max, delay, callback) {
 }
 
 export default class XsbugConnection {
-  private attempts: number;
+  public connected: boolean;
+
+  private connectTimer: NodeJS.Timeout;
+  private connectionAttempt: number;
+
+  private watchdogTimer: NodeJS.Timeout;
+
   private uri: string;
-  private socket: WebSocket & { timeout?: NodeJS.Timeout };
+  private socket: WebSocket;
   private parser: DOMParser;
 
   constructor(uri: string) {
     this.uri = uri;
     this.parser = new DOMParser();
-    this.attempts = 0;
-    this.initSocket();
-  }
-  private initSocket() {
-    this.socket = new WebSocket(this.uri, ['x-xsbug']);
-    this.socket.onopen = this.onOpen.bind(this);
-    this.socket.onclose = this.onClose.bind(this);
-    this.socket.onerror = this.onError.bind(this);
-    this.socket.onmessage = this.onMessage.bind(this);
-    this.attempts++;
+    this.connectionAttempt = 0;
   }
 
-  onOpen() {
-    console.log('Connected');
-    clearTimeout(this.socket.timeout);
+  public connect() {
+    this.initSocket();
   }
-  onClose() {
-    if (this.attempts < 5) {
-      console.log('Retry in ' + 250 * Math.pow(2, this.attempts));
-      setTimeout(() => this.initSocket(), 250 * Math.pow(2, this.attempts));
+
+  private initSocket() {
+    this.socket = new WebSocket(this.uri, ['x-xsbug']);
+    this.socket.onopen = this._onOpen.bind(this);
+    this.socket.onclose = this._onClose.bind(this);
+    this.socket.onerror = this._onError.bind(this);
+    this.socket.onmessage = this._onMessage.bind(this);
+    this.connectionAttempt++;
+  }
+
+  private _onOpen(ev: Event) {
+    clearTimeout(this.connectTimer);
+
+    this.onOpen(ev);
+  }
+
+  private _onError(err: Event) {
+    if (this.socket.readyState === 3) {
+      if (this.connectionAttempt <= 10) {
+        this.connectTimer = setTimeout(() => {
+          this.initSocket();
+        }, 1000);
+      } else {
+        this.onConnectionError();
+      }
+    } else {
+      this.onError(err);
     }
   }
-  onError() {
-    console.log('WS ERROR');
-    this.onClose();
+
+  private _onClose(ev: CloseEvent) {
+    if (this.socket.readyState === 3) {
+    } else {
+      this.onClose(ev);
+    }
   }
-  onMessage(event) {
+
+  private _onMessage(event: MessageEvent) {
     const msg = XsbugMessageParser(
       this.parser.parseFromString(event.data, 'application/xml')
     );
@@ -288,10 +311,18 @@ export default class XsbugConnection {
       }
     });
   }
+
+  onClose(ev: CloseEvent) {}
+  onOpen(ev: Event) {}
+  onError(ev: Event) {}
+
+  onConnectionError() {}
+
   send(data) {
     return this.socket.send(data);
   }
-  // transmit message
+
+  // Actions
   doClearBreakpoint(path, line) {
     this.sendCommand(`<clear-breakpoint path="${path}" line="${line}"/>`);
   }
@@ -327,7 +358,8 @@ export default class XsbugConnection {
   doToggle(value) {
     this.sendCommand(`<toggle id="${value}"/>`);
   }
-  // receive messages
+
+  // Events
   onBreak(msg: XsbugBreakMessage) {}
   onLogin(msg: XsbugLoginMessage) {}
   onInstrumentationConfigure(msg: XsbugInstrumentMessage) {}
@@ -335,7 +367,7 @@ export default class XsbugConnection {
   onLocal(msg: XsbugLocalMessage) {}
   onLog(msg: XsbugLogMessage) {}
 
-  // helpers
+  // Helper
   sendCommand(msg) {
     this.send(crlf + msg + crlf);
   }

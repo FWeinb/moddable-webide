@@ -5,11 +5,14 @@ import './styles.css';
 
 import React from 'react';
 import SplitPane from 'react-split-pane';
+import { useLocalStorage } from 'react-use-storage';
+import { useOvermind } from '../../overmind';
+import { SidebarView } from '../../overmind/rootState';
 
 type Props = {
-  sidebar: () => React.ReactNode;
-  content: () => React.ReactNode;
-  log: () => React.ReactNode;
+  sidebar: React.ReactElement;
+  content: React.ReactElement;
+  log: React.ReactElement;
 };
 
 const Layout: React.FunctionComponent<Props> = ({
@@ -18,24 +21,57 @@ const Layout: React.FunctionComponent<Props> = ({
   log,
   ...reset
 }) => {
+  const {
+    state: { selectedSidebarView }
+  } = useOvermind();
+
+  const [sidebarSize, setSidebarSize] = useLocalStorage('sidebarSize', 200);
+  const [editorSize, setEditorSize] = useLocalStorage('editorSize', '85%');
+
   return (
     <SplitPane
       {...reset}
       style={{ position: 'relative' }}
+      pane1Style={
+        selectedSidebarView === SidebarView.Hidden
+          ? {
+              visibility: 'hidden',
+              maxWidth: 0
+            }
+          : {}
+      }
       split="vertical"
-      minSize={150}
-      defaultSize={200}
+      size={sidebarSize}
+      minSize={0}
+      onDragStarted={() => {
+        document.body.style.cursor = 'col-resize';
+      }}
+      onDragFinished={size => {
+        document.body.style.cursor = '';
+        setSidebarSize(size);
+      }}
     >
-      <React.Fragment>{sidebar && sidebar()}</React.Fragment>
+      {sidebar}
       <SplitPane
         split="horizontal"
-        pane2Style={{
-          overflow: 'hidden'
+        pane1Style={{
+          maxHeight: 'calc(100% - 35px)'
         }}
-        defaultSize="85%"
+        pane2Style={{
+          overflow: 'hidden',
+          background: 'var(--color-background)'
+        }}
+        defaultSize={editorSize}
+        onDragStarted={() => {
+          document.body.style.cursor = 'row-resize';
+        }}
+        onDragFinished={size => {
+          document.body.style.cursor = '';
+          setEditorSize(size);
+        }}
       >
-        <React.Fragment>{content && content()}</React.Fragment>
-        <React.Fragment>{log && log()}</React.Fragment>
+        {content}
+        {log}
       </SplitPane>
     </SplitPane>
   );

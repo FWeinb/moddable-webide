@@ -1,4 +1,4 @@
-import { FileMap } from './state';
+import { FileMap } from './rootState';
 
 export const files: FileMap = {
   'mod.js': {
@@ -11,6 +11,8 @@ import Ping from "ping";
 const HOST = "www.moddable.com";
 const ID = 0;
 const INTERVAL = 1000;	// interval between pings
+
+debugger;
 
 let ping = new Ping({host: HOST, id: ID, interval: INTERVAL}, (message, value, etc) => {
   switch (message) {

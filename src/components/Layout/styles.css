@@ -16,7 +16,6 @@
 }
 
 .Resizer.vertical {
-  height: 100%;
   cursor: col-resize;
 }
 

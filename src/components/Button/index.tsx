@@ -13,7 +13,7 @@ const Button: React.FC<ButtonProps> = props => {
         background: 'none',
         border: 'none',
         outline: 'none',
-        '-webkitAppearance': 'button'
+        '-webkit-appearance': 'button'
       }}
     >
       {props.children}

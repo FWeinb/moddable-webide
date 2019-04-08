@@ -49,9 +49,9 @@ self.MonacoEnvironment = {
 };
 
 monaco.languages.typescript.javascriptDefaults.setEagerModelSync(true);
-monaco.languages.typescript.javascriptDefaults.setDiagnosticsOptions({
-  noSemanticValidation: true,
-  noSyntaxValidation: true
+monaco.languages.typescript.javascriptDefaults.setCompilerOptions({
+  target: monaco.languages.typescript.ScriptTarget.ES2015,
+  lib: ['es6']
 });
 
 export default monaco;

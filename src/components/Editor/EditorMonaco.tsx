@@ -1,7 +1,8 @@
 /** @jsx jsx */
 import { jsx } from '@emotion/core';
-
 import React, { useRef, useEffect, useState } from 'react';
+
+import './style.css';
 
 import WebIDELogo from '../Icons/WebIDELogo';
 
@@ -64,15 +65,17 @@ const WelcomeScreen: React.FunctionComponent = () => {
 };
 const Editor: React.FunctionComponent = () => {
   const {
-    actions: { updateFile },
+    actions: {
+      Editor: { updateFile }
+    },
     state: {
-      editor: { currentFile }
+      Editor: { activeFile, activeBreakPoint }
     }
   } = useOvermind();
   const [eslint, _] = useState<ESLint>(() => new ESLint());
   const editorStats = useRef<EditorState>({});
   const editorContainer = useRef(null);
-  const editor = useRef(null);
+  const editor = useRef<monaco.editor.IStandaloneCodeEditor>(null);
 
   const runEslint = model => {
     eslint
@@ -93,7 +96,6 @@ const Editor: React.FunctionComponent = () => {
       minimap: {
         enabled: false
       },
-      glyphMargin: true,
       theme: 'vs-dark',
       automaticLayout: true
     });
@@ -105,31 +107,33 @@ const Editor: React.FunctionComponent = () => {
 
   // Add Save Shortcut
   useEffect(() => {
+    if (!activeFile) return;
+
     editor.current.addCommand(
       monaco.KeyMod.CtrlCmd | monaco.KeyCode.KEY_S,
       () => {
         const currentModel = editor.current.getModel();
 
         editorStats.current[
-          currentFile.name
+          activeFile.name
         ].version = currentModel.getAlternativeVersionId();
 
         updateFile({
-          name: currentFile.name,
+          name: activeFile.name,
           content: currentModel.getValue(),
           dirty: false
         });
       }
     );
-  }, [currentFile]);
+  }, [activeFile]);
 
   // Open Files
   useEffect(() => {
-    if (currentFile && editor.current) {
-      const { name } = currentFile;
+    if (activeFile && editor.current) {
+      const { name } = activeFile;
       const state = editorStats.current[name];
       // is loaded and content is not changed
-      if (state && currentFile.content === state.model.getValue()) {
+      if (state && activeFile.content === state.model.getValue()) {
         const { model, viewState } = state;
         editor.current.setModel(model);
         editor.current.restoreViewState(viewState);
@@ -141,14 +145,14 @@ const Editor: React.FunctionComponent = () => {
         }
         // Load new Model
         const model = monaco.editor.createModel(
-          currentFile.content,
+          activeFile.content,
           'javascript'
         );
         runEslint(model);
 
         // Register change listener
         model.onDidChangeContent(() => {
-          const state = editorStats.current[currentFile.name];
+          const state = editorStats.current[activeFile.name];
           updateFile({
             name,
             dirty: state.version !== model.getAlternativeVersionId()
@@ -166,20 +170,48 @@ const Editor: React.FunctionComponent = () => {
         monaco.editor.setModelMarkers(state.model, 'eslint', []);
         state.viewState = editor.current.saveViewState();
       };
-    } else if (currentFile === undefined) {
+    } else if (activeFile === undefined) {
       // Close
-      editor.current.setModel();
+      editor.current.setModel(null);
     }
-  }, [editor, currentFile]);
+  }, [editor, activeFile]);
 
+  // Apply activeBreakpoint
+  useEffect(() => {
+    if (!activeBreakPoint) return;
+
+    const { line, message } = activeBreakPoint;
+
+    editor.current.revealLineInCenterIfOutsideViewport(line);
+    const oldDecorations = editor.current.deltaDecorations(
+      [],
+      [
+        {
+          range: new monaco.Range(line, 1, line, 1),
+          options: {
+            isWholeLine: true,
+            stickiness: 1 /* NeverGrowsWhenTypingAtEdges */,
+            className: 'line-Breakpoint',
+            linesDecorationsClassName: 'glyph-Breakpoint',
+            glyphMarginHoverMessage: {
+              value: message
+            }
+          }
+        }
+      ]
+    );
+    return () => {
+      editor.current.deltaDecorations(oldDecorations, []);
+    };
+  }, [editor, activeBreakPoint]);
   return (
     <React.Fragment>
       <div
         ref={editorContainer}
         css={{ width: '100%', height: '100%' }}
-        style={{ display: currentFile ? 'block' : 'none' }}
+        style={{ display: activeFile ? 'block' : 'none' }}
       />
-      {currentFile === undefined ? <WelcomeScreen /> : null}
+      {activeFile === undefined ? <WelcomeScreen /> : null}
     </React.Fragment>
   );
 };

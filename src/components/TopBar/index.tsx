@@ -9,15 +9,19 @@ import WebIDELogo from '../Icons/WebIDELogo';
 import Input from '../Input';
 import Button from '../Button';
 
-import { CompilerState } from '../../overmind/state';
 import { useOvermind } from '../../overmind';
+import { CompilerState } from '../../overmind/Compiler/state';
 
 const EditorTopBar: React.FunctionComponent = () => {
   const {
-    actions: { setDeviceHostName, compileAndUpload, connectDebugger, openGist },
+    actions: {
+      openGist,
+      Device: { setDeviceHostName },
+      Compiler: { compileAndUpload }
+    },
     state: {
-      device: { host },
-      compiler: { state }
+      Device: { host },
+      Compiler: { state }
     }
   } = useOvermind();
 
@@ -57,14 +61,6 @@ const EditorTopBar: React.FunctionComponent = () => {
           title="Flash"
         >
           <FlashIcon />
-        </Button>
-        <Button
-          onClick={connectDebugger}
-          disabled={compilerNotReady}
-          title="Debug"
-          css={{ color: 'white' }}
-        >
-          Debug
         </Button>
       </div>
     </div>

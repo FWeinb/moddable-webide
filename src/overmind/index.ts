@@ -1,16 +1,26 @@
 import { Overmind, IConfig } from 'overmind';
+import { namespaced, merge } from 'overmind/config';
 import { createHook } from 'overmind-react';
-import { state } from './state';
 import { onInitialize } from './onInitialize';
-import * as actions from './actions';
-import * as effects from './effects';
 
-const config = {
-  onInitialize,
-  state,
-  actions,
-  effects
-};
+import * as effects from './effects';
+import * as actions from './actions';
+import state from './rootState';
+
+import Device from './Device';
+import Log from './Log';
+import Compiler from './Compiler';
+import Editor from './Editor';
+
+const config = merge(
+  { onInitialize, state, actions, effects },
+  namespaced({
+    Device,
+    Log,
+    Compiler,
+    Editor
+  })
+);
 
 declare module 'overmind' {
   interface Config extends IConfig<typeof config> {}

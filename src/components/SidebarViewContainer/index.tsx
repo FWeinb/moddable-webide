@@ -3,16 +3,15 @@ import { jsx } from '@emotion/core';
 
 import React from 'react';
 import { useOvermind } from '../../overmind';
-import { SidebarView } from '../../overmind/state';
+import { SidebarView } from '../../overmind/rootState';
 
 import SidebarFileExplorer from '../SidebarFileExplorer';
 import SidebarDebug from '../SidebarDebug';
+import Button from '../Button';
 
 const SidebarViewContainer: React.FunctionComponent = () => {
   const {
-    state: {
-      ide: { selectedSidebarView }
-    }
+    state: { selectedSidebarView }
   } = useOvermind();
 
   switch (selectedSidebarView) {

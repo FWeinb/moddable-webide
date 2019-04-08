@@ -8,11 +8,6 @@ import EditorMonaco from './EditorMonaco';
 import { useOvermind } from '../../overmind';
 
 const Editor: React.FunctionComponent = () => {
-  const {
-    state: {
-      editor: { currentFileName }
-    }
-  } = useOvermind();
   return (
     <div
       css={{

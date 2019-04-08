@@ -3,7 +3,8 @@ import { jsx } from '@emotion/core';
 
 import React from 'react';
 import { useOvermind } from '../../overmind';
-import { DeviceInstrumentConnectionState } from '../../overmind/state';
+import { DebugState } from '../../overmind/Device/state';
+import Button from '../Button';
 
 const AskToConnect: React.FC = () => {
   return <div>Currently Not Connected</div>;
@@ -12,12 +13,14 @@ const AskToConnect: React.FC = () => {
 const InstrumentationView: React.FC = () => {
   const {
     state: {
-      device: { instruments, stats }
+      Device: {
+        debug: { instruments, samples }
+      }
     }
   } = useOvermind();
   return (
     instruments &&
-    stats && (
+    samples && (
       <ul
         css={{
           listStyle: 'none',
@@ -30,7 +33,7 @@ const InstrumentationView: React.FC = () => {
           return (
             <li key={instrument.name} css={{ padding: 0, margin: 0 }}>
               <span>{instrument.name}: </span>
-              <span>{stats[index]}</span>
+              <span>{samples[index]}</span>
               <span>{instrument.value}</span>
             </li>
           );
@@ -43,7 +46,12 @@ const InstrumentationView: React.FC = () => {
 const SidebarDebug: React.FunctionComponent = () => {
   const {
     state: {
-      device: { debugConnectionState }
+      Device: {
+        debug: { state }
+      }
+    },
+    actions: {
+      Device: { debugBreak, debugContinue }
     }
   } = useOvermind();
 
@@ -69,8 +77,28 @@ const SidebarDebug: React.FunctionComponent = () => {
       >
         Debug
       </header>
-      {debugConnectionState === DeviceInstrumentConnectionState.CONNECTED ? (
-        <InstrumentationView />
+      {state === DebugState.CONNECTED ? (
+        <React.Fragment>
+          <div>
+            <Button
+              css={{ fontSize: '1.5em', color: 'lime' }}
+              onClick={() => {
+                debugContinue();
+              }}
+            >
+              ▶
+            </Button>
+            <Button
+              css={{ fontSize: '1.5em', color: 'gray' }}
+              onClick={() => {
+                debugBreak();
+              }}
+            >
+              ❙❙
+            </Button>
+          </div>
+          <InstrumentationView />
+        </React.Fragment>
       ) : (
         <AskToConnect />
       )}

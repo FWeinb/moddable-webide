@@ -45,13 +45,17 @@ const App: React.FunctionComponent = () => {
 
           :root {
             --color-lightest: #3b3b3b;
+            --color-light2: #383839;
             --color-light: #2d2d2d;
             --color-dark: #252526;
             --color-darkest: #1e1e1e;
 
             --color-accent: #175a89;
-            --color-text: rgba(255, 255, 255, 0.5);
+            --color-text: #fff;
             --color-text-muted: rgba(255, 255, 255, 0.5);
+
+            --color-error: #e51402;
+            --color-warning: #fee226;
           }
           .scrolling::-webkit-scrollbar {
             width: 13px;
@@ -88,9 +92,9 @@ const App: React.FunctionComponent = () => {
         </div>
         <div css={{ gridRow: 2, gridColumn: 2 }}>
           <Layout
-            content={() => <Editor />}
-            sidebar={() => <SidebarViewContainer />}
-            log={() => <Log />}
+            content={<Editor />}
+            sidebar={<SidebarViewContainer />}
+            log={<Log />}
           />
         </div>
       </div>

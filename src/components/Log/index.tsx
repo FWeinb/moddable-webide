@@ -3,11 +3,23 @@ import { jsx } from '@emotion/core';
 
 import React, { useEffect, useRef } from 'react';
 import { useOvermind } from '../../overmind';
+import { LogType } from '../../overmind/Log/state';
+
+const getLogColor = (type: LogType) => {
+  switch (type) {
+    case LogType.ERROR:
+      return 'var(--color-error)';
+    case LogType.INFO:
+      return 'var(--color-text)';
+    case LogType.WARNING:
+      return 'var(--color-warning)';
+  }
+};
 
 const Log: React.FunctionComponent = () => {
   const {
     state: {
-      log: { messages }
+      Log: { messages }
     }
   } = useOvermind();
 
@@ -15,7 +27,6 @@ const Log: React.FunctionComponent = () => {
 
   useEffect(() => {
     if (scrollContainerRef.current) {
-      console.log('OK');
       scrollContainerRef.current.scrollTop =
         scrollContainerRef.current.scrollHeight;
     }
@@ -33,7 +44,8 @@ const Log: React.FunctionComponent = () => {
       <header
         css={{
           padding: '0.5em',
-          color: '#DAD9DA'
+          color: 'var(--color-text)',
+          boxShadow: '0 1px 0 var(--color-light), 0 2px 0 rgba(0,0,0,.3)'
         }}
       >
         Log
@@ -50,7 +62,12 @@ const Log: React.FunctionComponent = () => {
         className="scrolling"
       >
         {messages.map(message => {
-          return <div key={message.time}> {message.text}</div>;
+          const color = getLogColor(message.type);
+          return (
+            <div key={message.time} style={{ color }}>
+              {message.text}
+            </div>
+          );
         })}
       </section>
     </section>
