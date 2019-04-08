@@ -6,7 +6,6 @@ const XSLC = new Promise((resolve, reject) => {
     printErr: text => {
       self.postMessage({
         type: 'error',
-        time: Date.now() + Math.random(),
         text
       });
     },
@@ -38,7 +37,6 @@ self.onmessage = message => {
         // Calling JS/C is a bottleneck
         self.postMessage({
           type: 'log',
-          time: Date.now() + Math.random(),
           text: 'Compile: ' + file.name
         });
         return xscl.compile(file.name);
@@ -64,7 +62,6 @@ self.onmessage = message => {
       const filesToLink = files.join(',');
       self.postMessage({
         type: 'log',
-        time: Date.now() + Math.random(),
         text: 'Link: ' + filesToLink
       });
       const exitCode = xscl.link(filesToLink, 'mod');
