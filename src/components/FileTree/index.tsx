@@ -1,10 +1,12 @@
 /** @jsx jsx */
-import { jsx } from '@emotion/core';
+import { jsx, css } from '@emotion/core';
 
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
+import { useDropzone } from 'react-dropzone';
 
 import { useOvermind } from '../../overmind';
 import { File } from '../../overmind/rootState';
+
 import Button from '../Button';
 import NewFileIcon from '../Icons/NewFileIcon';
 
@@ -61,20 +63,59 @@ const FileItem: React.FunctionComponent<FileItemProp> = ({
   );
 };
 
+const activeDrag = css`
+  ::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.05);
+  }
+`;
+
+const readDroppedFile = file => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = e => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsText(file);
+  });
+};
+
 const FileTree: React.FunctionComponent = () => {
   const {
     state: {
       Editor: { activeFile, files }
     },
     actions: {
-      Editor: { addFile }
+      Editor: { createNewFile, addFiles }
     }
   } = useOvermind();
 
   const [hover, setHover] = useState(false);
 
+  const onDrop = useCallback(async acceptedFiles => {
+    const files: File[] = await Promise.all(
+      acceptedFiles.map(async file => {
+        const content = await readDroppedFile(file);
+        return {
+          name: file.name,
+          content
+        };
+      })
+    );
+    addFiles(files);
+  }, []);
+
+  const { getRootProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: ['.js', '.json'],
+    noKeyboard: true
+  });
+
   return (
-    <section css={{ width: '100%' }}>
+    <section css={{ display: 'flex', flexDirection: 'column', flexGrow: 1 }}>
       <header
         onMouseEnter={() => setHover(true)}
         onMouseLeave={() => setHover(false)}
@@ -93,7 +134,7 @@ const FileTree: React.FunctionComponent = () => {
       >
         <span>Files</span>
         <Button
-          onClick={() => addFile()}
+          onClick={() => createNewFile()}
           css={{
             padding: 0,
             marginLeft: 'auto',
@@ -106,11 +147,17 @@ const FileTree: React.FunctionComponent = () => {
         </Button>
       </header>
       <ul
-        css={{
-          listStyle: 'none',
-          margin: 0,
-          padding: 0
-        }}
+        css={[
+          {
+            position: 'relative',
+            flexGrow: 1,
+            listStyle: 'none',
+            margin: 0,
+            padding: 0
+          },
+          isDragActive && activeDrag
+        ]}
+        {...getRootProps()}
       >
         {files &&
           Object.values(files).map(file => {

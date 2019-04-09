@@ -2,7 +2,13 @@ import { Action } from 'overmind';
 import { BreakPoint } from './state';
 import { FileMap, File } from '../rootState';
 
-export const addFile: Action = ({ state, actions }) => {
+export const addFiles: Action<File[]> = ({ state, actions }, files) => {
+  files.forEach(file => {
+    state.Editor.files[file.name] = file;
+  });
+};
+
+export const createNewFile: Action = ({ state, actions }) => {
   const name = window.prompt('File Name', 'unknown.js');
   if (name) {
     state.Editor.files[name] = {
