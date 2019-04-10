@@ -1,4 +1,5 @@
 import { File, FileMap } from '../rootState';
+import monaco from '../../components/Editor/monaco';
 
 export type BreakPoint = {
   path: string;
@@ -14,6 +15,10 @@ export type Editor = {
 
   files: FileMap;
   activeBreakPoint: BreakPoint;
+
+  models: {
+    [key: string]: monaco.editor.ITextModel;
+  };
 };
 
 const state: Editor = {
@@ -23,7 +28,9 @@ const state: Editor = {
   openFile: undefined,
   openTabs: [],
   files: {},
-  activeBreakPoint: undefined
+  activeBreakPoint: undefined,
+
+  models: {}
 };
 
 export default state;

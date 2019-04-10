@@ -1,6 +1,7 @@
 import { Action } from 'overmind';
 import { BreakPoint } from './state';
 import { FileMap, File } from '../rootState';
+import monaco from '../../components/Editor/monaco';
 
 export const addFiles: Action<File[]> = ({ state, actions }, files) => {
   files.forEach(file => {
@@ -83,10 +84,10 @@ export const closeFile: Action<string> = (
   const file = state.Editor.files[fileName];
   if (file) {
     file.open = false;
+    delete state.Editor.models[file.name];
     state.Editor.openTabs = state.Editor.openTabs.filter(
       openTab => state.Editor.files[openTab].open
     );
-
     if (state.Editor.openTabs.length > 0) {
       actions.Editor.openFile(
         state.Editor.openTabs[state.Editor.openTabs.length - 1]
@@ -128,4 +129,27 @@ export const updateFile: Action<FileWithOptionalProps> = (
   }
 
   effects.Editor.saveToLocalStorage(state.Editor.files);
+};
+
+export const saveOpenFiles: Action = ({ state, actions }) => {
+  Object.entries(state.Editor.models).forEach(([name, model]) => {
+    actions.Editor.updateFile({
+      name,
+      content: model.getValue(),
+      dirty: false
+    });
+  });
+};
+
+export const closeModel: Action<{
+  name: string;
+}> = ({ state }, file) => {
+  delete state.Editor.models[file.name];
+};
+
+export const addModel: Action<{
+  name: string;
+  model: monaco.editor.IModel;
+}> = ({ state }, file) => {
+  state.Editor.models[file.name] = file.model;
 };

@@ -14,6 +14,8 @@ export const load: Action = async ({ state, actions, effects }) => {
 };
 
 export const compileAndUpload: Action = async ({ state, effects, actions }) => {
+  await actions.Editor.saveOpenFiles();
+
   actions.Log.clear();
 
   try {

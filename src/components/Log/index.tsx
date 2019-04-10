@@ -26,9 +26,9 @@ const Log: React.FunctionComponent = () => {
   const scrollContainerRef = useRef(null);
 
   useEffect(() => {
-    if (scrollContainerRef.current) {
-      scrollContainerRef.current.scrollTop =
-        scrollContainerRef.current.scrollHeight;
+    const node = scrollContainerRef.current;
+    if (node) {
+      node.scrollTop = node.scrollHeight;
     }
   }, [messages.length]);
 
@@ -48,7 +48,7 @@ const Log: React.FunctionComponent = () => {
           boxShadow: '0 1px 0 var(--color-light), 0 2px 0 rgba(0,0,0,.3)'
         }}
       >
-        Log
+        <span>Log</span>
       </header>
       <section
         css={{

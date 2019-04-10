@@ -66,7 +66,7 @@ const WelcomeScreen: React.FunctionComponent = () => {
 const Editor: React.FunctionComponent = () => {
   const {
     actions: {
-      Editor: { updateFile }
+      Editor: { addModel, closeModel, updateFile }
     },
     state: {
       Editor: { activeFile, activeBreakPoint }
@@ -133,21 +133,22 @@ const Editor: React.FunctionComponent = () => {
       const { name } = activeFile;
       const state = editorStats.current[name];
       // is loaded and content is not changed
-      if (state && activeFile.content === state.model.getValue()) {
+      if (state) {
         const { model, viewState } = state;
         editor.current.setModel(model);
         editor.current.restoreViewState(viewState);
         runEslint(model);
       } else {
-        // Dispose model
-        if (state) {
-          state.model = null;
-        }
         // Load new Model
         const model = monaco.editor.createModel(
           activeFile.content,
           'javascript'
         );
+        addModel({
+          name: activeFile.name,
+          model
+        });
+
         runEslint(model);
 
         // Register change listener
