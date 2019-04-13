@@ -1,36 +1,27 @@
-import { File, FileMap } from '../rootState';
 import monaco from '../../components/Editor/monaco';
 
 export type BreakPoint = {
-  path: string;
+  fileId: string;
   message: string;
   line: number;
 };
 
+export type EditorFile = {
+  id: string;
+  dirty: boolean;
+};
+
 export type Editor = {
-  activeFile: File;
+  activeFile: EditorFile;
+  openTabs: EditorFile[];
 
-  openFile: string;
-  openTabs: string[];
-
-  files: FileMap;
   activeBreakPoint: BreakPoint;
-
-  models: {
-    [key: string]: monaco.editor.ITextModel;
-  };
 };
 
 const state: Editor = {
-  get activeFile() {
-    return this.files && this.files[this.openFile];
-  },
-  openFile: undefined,
+  activeFile: undefined,
   openTabs: [],
-  files: {},
-  activeBreakPoint: undefined,
-
-  models: {}
+  activeBreakPoint: undefined
 };
 
 export default state;

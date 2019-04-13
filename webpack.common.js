@@ -23,6 +23,9 @@ module.exports = {
   entry: {
     app: './src/index.tsx',
     'editor.worker': 'monaco-editor/esm/vs/editor/editor.worker.js',
+    'json.worker': 'monaco-editor/esm/vs/language/json/json.worker',
+    'css.worker': 'monaco-editor/esm/vs/language/css/css.worker',
+    'html.worker': 'monaco-editor/esm/vs/language/html/html.worker',
     'ts.worker': 'monaco-editor/esm/vs/language/typescript/ts.worker'
   },
   resolve: {
@@ -88,6 +91,7 @@ module.exports = {
       {
         test: /\.css$/,
         use: [
+          'style-loader',
           MiniCssExtractPlugin.loader,
           {
             loader: 'css-loader',
@@ -103,7 +107,7 @@ module.exports = {
         use: {
           loader: 'babel-loader',
           options: {
-            plugins: ['emotion'],
+            plugins: ['emotion', '@babel/plugin-syntax-dynamic-import'],
             presets: [babelEnvConfig]
           }
         }
@@ -114,7 +118,11 @@ module.exports = {
         use: {
           loader: 'babel-loader',
           options: {
-            plugins: ['emotion', '@babel/plugin-proposal-class-properties'],
+            plugins: [
+              'emotion',
+              '@babel/plugin-syntax-dynamic-import',
+              '@babel/plugin-proposal-class-properties'
+            ],
             presets: [babelEnvConfig, '@babel/typescript', '@babel/react']
           }
         }

@@ -1,65 +1,150 @@
 /** @jsx jsx */
 import { jsx, css } from '@emotion/core';
 
-import React, { useState, useCallback } from 'react';
+import React, {
+  useState,
+  useCallback,
+  useEffect,
+  PropsWithChildren
+} from 'react';
 import { useDropzone } from 'react-dropzone';
 
 import { useOvermind } from '../../overmind';
-import { File } from '../../overmind/rootState';
+import { XFile, Directory, XStorage } from '../../overmind/Storage/state';
 
 import Button from '../Button';
-import NewFileIcon from '../Icons/NewFileIcon';
+import FolderIcon from '../Icons/FolderIcon';
+import JsFileIcon from '../Icons/JsFileIcon';
+import { EditorFile } from '../../overmind/Editor/state';
+import { isFilePartOf } from '../../overmind/Storage/utils';
 
-type FileItemProp = {
+import { NewFileButton, NewFolderButton, DeleteButton } from './Buttons';
+
+type ItemConainerProps = {
   selected: boolean;
-  file: File;
+  depth: number;
+  children: ({ hover: boolean }) => React.ReactElement;
 };
 
-const FileItem: React.FunctionComponent<FileItemProp> = ({
-  file,
-  selected
+const ItemContainer: React.FC<ItemConainerProps> = ({
+  selected,
+  depth,
+  children
+}) => {
+  const [hover, setHover] = useState(false);
+
+  const additionStyles = selected
+    ? {
+        color: 'var(--color-text)',
+        background: 'var(--color-light)'
+      }
+    : {};
+
+  return (
+    <div
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      css={{
+        height: 22
+      }}
+      style={{
+        ...additionStyles,
+        padding: `.125em 0 .125em ${0.75 + depth * 0.7}em`
+      }}
+    >
+      {children({ hover })}
+    </div>
+  );
+};
+
+type DirItemProp = {
+  dir: Directory;
+  parentId: string;
+
+  onClick: () => void;
+  open: boolean;
+  hover: boolean;
+};
+
+const DirItem: React.FC<DirItemProp> = ({
+  onClick,
+  parentId,
+  open,
+  dir,
+  hover
 }) => {
   const {
     actions: {
-      Editor: { removeFile, openFile }
+      Storage: { createNewFile, createNewFolder, removeDir }
     }
   } = useOvermind();
-
-  const [hover, setHover] = useState(false);
-
   return (
-    <li
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
-      onClick={() => openFile(file.name)}
+    <div
+      onClick={onClick}
+      css={{
+        display: 'flex',
+        alignItems: 'center',
+        cursor: 'pointer',
+        color: 'var(--color-text-muted)'
+      }}
+    >
+      <FolderIcon open={open} />
+      <span css={{ paddingLeft: '0.5em' }}>{dir.name}</span>
+      <section
+        css={{
+          display: 'flex',
+          alignItems: 'center',
+          marginLeft: 'auto',
+          fontWeight: 'bold'
+        }}
+        style={{ visibility: hover ? 'visible' : 'hidden' }}
+      >
+        <NewFileButton
+          onClick={e => (e.stopPropagation(), createNewFile(parentId))}
+        />
+        <NewFolderButton
+          onClick={e => (e.stopPropagation(), createNewFolder(parentId))}
+        />
+        <DeleteButton onClick={e => (e.stopPropagation(), removeDir(dir.id))} />
+      </section>
+    </div>
+  );
+};
+
+type FileItemProp = {
+  file: XFile;
+  hover: boolean;
+};
+
+const FileItem: React.FunctionComponent<FileItemProp> = ({ file, hover }) => {
+  const {
+    actions: {
+      Editor: { openFile },
+      Storage: { removeFile }
+    }
+  } = useOvermind();
+  return (
+    <div
+      onClick={() => openFile(file.id)}
       css={{
         display: 'flex',
         cursor: 'pointer',
-        paddingLeft: '1.25em',
         color: 'var(--color-text-muted)'
       }}
-      style={
-        selected
-          ? {
-              color: 'var(--color-text)',
-              background: 'var(--color-light)'
-            }
-          : undefined
-      }
     >
-      <span>{file.name}</span>
+      <span>
+        <JsFileIcon />
+      </span>
+      <span css={{ paddingLeft: '0.5em' }}>{file.name}</span>
       <section
         css={{ marginLeft: 'auto', fontWeight: 'bold' }}
         style={{ visibility: hover ? 'visible' : 'hidden' }}
       >
-        <Button
-          onClick={() => removeFile(file.name)}
-          css={{ transform: 'scale(1.2)', color: 'var(--color-text)' }}
-        >
-          ×
-        </Button>
+        <DeleteButton
+          onClick={e => (e.stopPropagation(), removeFile(file.id))}
+        />
       </section>
-    </li>
+    </div>
   );
 };
 
@@ -68,50 +153,144 @@ const activeDrag = css`
     content: '';
     position: absolute;
     top: 0;
+    left: 0;
     width: 100%;
     height: 100%;
     background: rgba(255, 255, 255, 0.05);
   }
 `;
 
-const readDroppedFile = file => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = e => resolve(reader.result);
-    reader.onerror = reject;
-    reader.readAsText(file);
-  });
+type DirectoryContainerProps = PropsWithChildren<{
+  dir: Directory;
+  depth: number;
+  activeFile: EditorFile;
+  parentDirId?: string;
+  Storage: XStorage;
+}>;
+
+const DirectoryContainer: React.FC<DirectoryContainerProps> = ({
+  dir,
+  depth,
+  parentDirId,
+  Storage,
+  activeFile,
+  children
+}) => {
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (activeFile) {
+      if (isFilePartOf(Storage, parentDirId, activeFile.id)) {
+        setOpen(true);
+      }
+    }
+  }, [activeFile]);
+  return (
+    <React.Fragment>
+      <ItemContainer depth={depth} selected={false}>
+        {({ hover }) => (
+          <DirItem
+            parentId={dir.id}
+            dir={dir}
+            open={open}
+            hover={hover}
+            onClick={() => setOpen(prev => !prev)}
+          />
+        )}
+      </ItemContainer>
+      {open && children}
+    </React.Fragment>
+  );
+};
+
+type DirectoryProps = {
+  parentDirId?: string;
+  Storage: XStorage;
+  activeFile: EditorFile;
+  depth: number;
+  style?: any;
+};
+
+const Dir: React.FC<DirectoryProps> = ({
+  parentDirId,
+  Storage,
+  activeFile,
+  depth,
+  style,
+  ...props
+}) => {
+  return (
+    <div
+      css={[
+        {
+          position: 'relative',
+          flexGrow: 1,
+          margin: 0,
+          padding: 0,
+          listStyle: 'none'
+        }
+      ]}
+      style={style}
+      {...props}
+    >
+      {Object.values(Storage.directories)
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .filter(dir => dir.parent === parentDirId)
+        .map(dir => {
+          return (
+            <DirectoryContainer
+              key={dir.id}
+              depth={depth}
+              Storage={Storage}
+              parentDirId={dir.id}
+              dir={dir}
+              activeFile={activeFile}
+            >
+              <Dir
+                Storage={Storage}
+                activeFile={activeFile}
+                parentDirId={dir.id}
+                style={{ display: open ? 'block' : 'none' }}
+                depth={depth + 1}
+              />
+            </DirectoryContainer>
+          );
+        })}
+      {Object.values(Storage.files)
+        .filter(file => file.parent === parentDirId)
+        .map(file => (
+          <ItemContainer
+            key={file.id}
+            depth={depth}
+            selected={activeFile && activeFile.id === file.id}
+          >
+            {({ hover }) => <FileItem hover={hover} file={file} />}
+          </ItemContainer>
+        ))}
+    </div>
+  );
 };
 
 const FileTree: React.FunctionComponent = () => {
   const {
     state: {
-      Editor: { activeFile, files }
+      Storage,
+      Editor: { activeFile }
     },
     actions: {
-      Editor: { createNewFile, addFiles }
+      Storage: { addDroppedFiles, createNewFile, createNewFolder }
     }
   } = useOvermind();
 
   const [hover, setHover] = useState(false);
-
-  const onDrop = useCallback(async acceptedFiles => {
-    const files: File[] = await Promise.all(
-      acceptedFiles.map(async file => {
-        const content = await readDroppedFile(file);
-        return {
-          name: file.name,
-          content
-        };
-      })
-    );
-    addFiles(files);
+  const onDrop = useCallback(async (acceptedFiles: File[]) => {
+    addDroppedFiles(acceptedFiles);
   }, []);
 
   const { getRootProps, isDragActive } = useDropzone({
     onDrop,
     accept: ['.js', '.json'],
-    noKeyboard: true
+    noKeyboard: true,
+    noDragEventsBubbling: true
   });
 
   return (
@@ -133,43 +312,29 @@ const FileTree: React.FunctionComponent = () => {
         }}
       >
         <span>Files</span>
-        <Button
-          onClick={() => createNewFile()}
+        <section
           css={{
-            padding: 0,
+            display: 'flex',
+            alignItems: 'center',
             marginLeft: 'auto',
-            fontWeight: 'bold',
-            color: '#fff'
+            fontWeight: 'bold'
           }}
           style={{ visibility: hover ? 'visible' : 'hidden' }}
         >
-          <NewFileIcon />
-        </Button>
+          <NewFileButton
+            onClick={e => (e.stopPropagation(), createNewFile(undefined))}
+          />
+          <NewFolderButton
+            onClick={e => (e.stopPropagation(), createNewFolder(undefined))}
+          />
+        </section>
       </header>
-      <ul
-        css={[
-          {
-            position: 'relative',
-            flexGrow: 1,
-            listStyle: 'none',
-            margin: 0,
-            padding: 0
-          },
-          isDragActive && activeDrag
-        ]}
+      <div
+        css={[{ height: '100%' }, isDragActive && activeDrag]}
         {...getRootProps()}
       >
-        {files &&
-          Object.values(files).map(file => {
-            return (
-              <FileItem
-                key={file.name}
-                file={file}
-                selected={activeFile && activeFile.name === file.name}
-              />
-            );
-          })}
-      </ul>
+        <Dir activeFile={activeFile} Storage={Storage} depth={0} />
+      </div>
     </section>
   );
 };

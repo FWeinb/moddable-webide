@@ -3,15 +3,18 @@ import { jsx } from '@emotion/core';
 
 import React from 'react';
 import { useOvermind } from '../../overmind';
-
-import { File } from '../../overmind/rootState';
+import { XFile } from '../../overmind/Storage/state';
+import { EditorFile } from '../../overmind/Editor/state';
+import { getPath } from '../../overmind/Storage/utils';
 
 const FileTab: React.FunctionComponent<{
-  file: File;
+  tab: EditorFile;
+  file: XFile;
+  path: string;
   open: boolean;
   onOpen: VoidFunction;
   onClose: VoidFunction;
-}> = ({ file, open, onOpen, onClose }) => {
+}> = ({ tab, file, path, open, onOpen, onClose }) => {
   // Adopt tracking of file
   useOvermind();
 
@@ -32,7 +35,7 @@ const FileTab: React.FunctionComponent<{
       }
     >
       <div onClick={() => !open && onOpen()} css={{ marginRight: '1em' }}>
-        {file ? file.name + (file.dirty ? '*' : '') : ''}
+        {file ? path + (tab.dirty ? '*' : '') : ''}
       </div>
       <div onClick={() => onClose()}>×</div>
     </div>
@@ -41,11 +44,12 @@ const FileTab: React.FunctionComponent<{
 
 const EditorTopBar: React.FunctionComponent = () => {
   const {
+    state: {
+      Editor: { activeFile, openTabs },
+      Storage
+    },
     actions: {
       Editor: { openFile, closeFile }
-    },
-    state: {
-      Editor: { activeFile, openTabs, files }
     }
   } = useOvermind();
 
@@ -66,17 +70,17 @@ const EditorTopBar: React.FunctionComponent = () => {
           fontSize: '0.9em'
         }}
       >
-        {openTabs
-          .map(tab => files[tab])
-          .map(file => (
-            <FileTab
-              key={file.name}
-              file={file}
-              open={activeFile && file.name === activeFile.name}
-              onOpen={() => openFile(file.name)}
-              onClose={() => closeFile(file.name)}
-            />
-          ))}
+        {openTabs.map(tab => (
+          <FileTab
+            key={tab.id}
+            tab={tab}
+            file={Storage.files[tab.id]}
+            path={getPath(Storage, tab.id)}
+            open={activeFile && tab.id === activeFile.id}
+            onOpen={() => openFile(tab.id)}
+            onClose={() => closeFile(tab.id)}
+          />
+        ))}
       </section>
     )
   );

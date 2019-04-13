@@ -14,13 +14,14 @@ export const load: Action = async ({ state, actions, effects }) => {
 };
 
 export const compileAndUpload: Action = async ({ state, effects, actions }) => {
-  await actions.Editor.saveOpenFiles();
+  await actions.Editor.saveAllFiles();
 
+  actions.Device.disconnectDebugger();
   actions.Log.clear();
 
   try {
-    const file = await effects.Compiler.compile(
-      Object.values(state.Editor.files).map(json)
+    const file: Uint8Array = await effects.Compiler.compile(
+      json(state.Storage)
     );
 
     actions.Log.addMessage('Uploading...');

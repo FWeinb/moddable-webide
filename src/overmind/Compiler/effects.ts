@@ -1,5 +1,5 @@
 import XSCL from '../../xs';
-import { File } from '../rootState';
+import { XStorage } from '../Storage/state';
 
 let xscl: XSCL;
 
@@ -12,7 +12,7 @@ export const load = (): Promise<XSCL> => {
   });
 };
 
-export const compile = async (files: File[]): Promise<Uint8Array> => {
-  const compiledFiles = await xscl.compile(files);
+export const compile = async (storage: XStorage): Promise<Uint8Array> => {
+  const compiledFiles = await xscl.compile(storage);
   return await xscl.link(compiledFiles);
 };

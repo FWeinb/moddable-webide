@@ -244,6 +244,18 @@ export default class XsbugConnection {
     this.initSocket();
   }
 
+  public disconnect() {
+    clearTimeout(this.connectTimer);
+    if (this.socket) {
+      this.socket.onopen = undefined;
+      this.socket.onclose = undefined;
+      this.socket.onerror = undefined;
+      this.socket.onmessage = undefined;
+      console.log('closed');
+      this.socket.close();
+    }
+  }
+
   private initSocket() {
     this.socket = new WebSocket(this.uri, ['x-xsbug']);
     this.socket.onopen = this._onOpen.bind(this);
@@ -255,7 +267,7 @@ export default class XsbugConnection {
 
   private _onOpen(ev: Event) {
     clearTimeout(this.connectTimer);
-
+    this.connected = true;
     this.onOpen(ev);
   }
 

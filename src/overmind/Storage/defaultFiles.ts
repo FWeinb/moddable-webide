@@ -1,39 +1,17 @@
-import { FileMap } from './rootState';
+import { XStorage } from './state';
 
-export const files: FileMap = {
-  'mod.js': {
-    open: true,
-    dirty: false,
-    name: 'mod.js',
-    content: `
-import Ping from "ping";
-
-const HOST = "www.moddable.com";
-const ID = 0;
-const INTERVAL = 1000;	// interval between pings
-
-debugger;
-
-let ping = new Ping({host: HOST, id: ID, interval: INTERVAL}, (message, value, etc) => {
-  switch (message) {
-    case -1:
-      trace(\`Error: \$\{value\}\\n\`);
-      break;
-    case 1:
-      trace(\`\$\{value\} bytes from \$\{etc.address\}: icmp_seq=\$\{etc.icmp_seq\}\\n\`);
-      break;
-    case 2:
-      trace(\`Request timeout for icmp_seq \$\{ping.icmp_seq\}\\n\`);
-      break;
-  }
-});
-`.trim()
+export const files: XStorage = {
+  directories: {
+    '0': {
+      id: '0',
+      name: 'src'
+    }
   },
-  'ping.js': {
-    open: false,
-    dirty: false,
-    name: 'ping.js',
-    content: `
+  files: {
+    '1': {
+      id: '1',
+      name: 'ping.js',
+      content: `
 import {Socket} from "socket";
 import Net from "net";
 import Timer from "timer";
@@ -141,6 +119,37 @@ class Ping extends Socket {
 Object.freeze(Ping.prototype);
 
 export default Ping;
+`.trim(),
+      parent: '0'
+    },
+    '2': {
+      id: '2',
+      name: 'mod.js',
+      content: `
+// runmod has no support for paths yet..
+// should be "src/ping"
+import Ping from "ping";
+
+const HOST = "www.moddable.com";
+const ID = 0;
+const INTERVAL = 1000;	// interval between pings
+
+debugger;
+
+let ping = new Ping({host: HOST, id: ID, interval: INTERVAL}, (message, value, etc) => {
+  switch (message) {
+    case -1:
+      trace(\`Error: \$\{value\}\\n\`);
+      break;
+    case 1:
+      trace(\`\$\{value\} bytes from \$\{etc.address\}: icmp_seq=\$\{etc.icmp_seq\}\\n\`);
+      break;
+    case 2:
+      trace(\`Request timeout for icmp_seq \$\{ping.icmp_seq\}\\n\`);
+      break;
+  }
+});
 `.trim()
+    }
   }
 };

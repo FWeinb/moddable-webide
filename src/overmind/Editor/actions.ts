@@ -1,155 +1,82 @@
 import { Action } from 'overmind';
-import { BreakPoint } from './state';
-import { FileMap, File } from '../rootState';
-import monaco from '../../components/Editor/monaco';
-
-export const addFiles: Action<File[]> = ({ state, actions }, files) => {
-  files.forEach(file => {
-    state.Editor.files[file.name] = file;
-  });
-};
-
-export const createNewFile: Action = ({ state, actions }) => {
-  const name = window.prompt('File Name', 'unknown.js');
-  if (name) {
-    state.Editor.files[name] = {
-      name,
-      content: '',
-      dirty: false,
-      open: false
-    };
-    actions.Editor.openFile(name);
-  }
-};
-
-export const removeFile: Action<string> = (
-  { state, actions, effects },
-  fileName
-) => {
-  const confirmed = window.confirm(
-    `Are you sure you want to delete "${fileName}"?`
-  );
-  if (confirmed) {
-    actions.Editor.closeFile(fileName);
-    delete state.Editor.files[fileName];
-    effects.Editor.saveToLocalStorage(state.Editor.files);
-  }
-};
+import { BreakPoint, EditorFile } from './state';
 
 export const closeAllFiles: Action = ({ state }) => {
-  state.Editor.files = {};
-  state.Editor.openFile = undefined;
+  state.Editor.activeFile = undefined;
   state.Editor.openTabs = [];
 };
 
-export const loadFiles: Action<FileMap> = ({ state, actions }, files) => {
-  state.Editor.files = files;
-  state.Editor.openTabs = Object.values(files)
-    .filter(file => file.open)
-    .map(file => file.name);
-
-  if (state.Editor.openTabs.length > 0) {
-    actions.Editor.openFile(state.Editor.openTabs[0]);
-  } else {
-    actions.Editor.openFile(Object.values(state.Editor.files)[0].name);
-  }
-};
-
-export const openFile: Action<string> = ({ state, effects }, fileName) => {
-  const file = state.Editor.files[fileName];
-  if (file) {
-    file.open = true;
-    state.Editor.openFile = file.name;
-    if (!state.Editor.openTabs.some(openTab => openTab === file.name)) {
-      state.Editor.openTabs.push(file.name);
-    }
-    effects.Editor.saveToLocalStorage(state.Editor.files);
-  }
-};
-
-export const openFileOnBreakPoint: Action<BreakPoint> = (
-  { state: { Editor: EditorState }, actions: { Editor: EditorActions } },
-  breakPoint
-) => {
-  if (EditorState.files[breakPoint.path]) {
-    EditorActions.openFile(breakPoint.path);
-    EditorState.activeBreakPoint = breakPoint;
-  }
-};
-
-export const closeFile: Action<string> = (
-  { state, actions, effects },
-  fileName
-) => {
-  const file = state.Editor.files[fileName];
-  if (file) {
-    file.open = false;
-    delete state.Editor.models[file.name];
-    state.Editor.openTabs = state.Editor.openTabs.filter(
-      openTab => state.Editor.files[openTab].open
-    );
-    if (state.Editor.openTabs.length > 0) {
-      actions.Editor.openFile(
-        state.Editor.openTabs[state.Editor.openTabs.length - 1]
-      );
-    } else {
-      state.Editor.openFile = undefined;
-    }
-
-    effects.Editor.saveToLocalStorage(state.Editor.files);
-  }
-};
-
-type Overwrite<T1, T2> = { [P in Exclude<keyof T1, keyof T2>]: T1[P] } & T2;
-
-type FileWithOptionalProps = Overwrite<
-  File,
-  { content?: string; open?: boolean }
->;
-
-export const updateFile: Action<FileWithOptionalProps> = (
-  { state, effects },
-  file
-) => {
-  const { name, content, dirty } = file;
-
-  if (content) {
-    state.Editor.files[name].content = content;
-  }
-
-  state.Editor.files[name].dirty = dirty;
-
-  const openFile =
-    state.Editor.files[
-      state.Editor.openTabs.find(fileName => fileName === name)
-    ];
-
-  if (openFile) {
-    openFile.dirty = dirty;
-  }
-
-  effects.Editor.saveToLocalStorage(state.Editor.files);
-};
-
-export const saveOpenFiles: Action = ({ state, actions }) => {
-  Object.entries(state.Editor.models).forEach(([name, model]) => {
-    actions.Editor.updateFile({
-      name,
-      content: model.getValue(),
+export const saveAllFiles: Action = ({ actions, effects }) => {
+  const models = effects.Editor.getOpenModels();
+  models.forEach(m => {
+    actions.Editor.updateEditorFile({
+      id: m.id,
+      content: m.content,
       dirty: false
     });
   });
 };
 
-export const closeModel: Action<{
-  name: string;
-}> = ({ state }, file) => {
-  delete state.Editor.models[file.name];
+export const openFile: Action<string> = ({ state }, fileId) => {
+  const file = state.Storage.files[fileId];
+  if (file) {
+    const openInTab = state.Editor.openTabs.find(
+      openTab => openTab.id === file.id
+    );
+    if (openInTab) {
+      state.Editor.activeFile = { ...openInTab };
+    } else {
+      state.Editor.activeFile = { id: file.id, dirty: false };
+      state.Editor.openTabs.push({ id: file.id, dirty: false });
+    }
+  }
 };
 
-export const addModel: Action<{
-  name: string;
-  model: monaco.editor.IModel;
-}> = ({ state }, file) => {
-  state.Editor.models[file.name] = file.model;
+export const closeFile: Action<string> = (
+  { state, actions, effects },
+  fileId
+) => {
+  if (state.Editor.activeFile.id === fileId) {
+    state.Editor.activeFile = undefined;
+  }
+
+  state.Editor.openTabs = state.Editor.openTabs.filter(
+    openTab => openTab.id !== fileId
+  );
+
+  if (state.Editor.openTabs.length > 0) {
+    actions.Editor.openFile(
+      state.Editor.openTabs[state.Editor.openTabs.length - 1].id
+    );
+  } else {
+    state.Editor.activeFile = undefined;
+  }
+};
+export const updateEditorFile: Action<EditorFile & { content?: string }> = (
+  { state, actions },
+  file
+) => {
+  if (
+    state.Editor.activeFile.id === file.id &&
+    state.Editor.activeFile.dirty !== file.dirty
+  ) {
+    state.Editor.activeFile.dirty = file.dirty;
+  }
+  const tab = state.Editor.openTabs.find(
+    tab => tab.id === file.id && tab.dirty !== file.dirty
+  );
+  if (tab) {
+    tab.dirty = file.dirty;
+  }
+  // Update content if changed
+  if (file.content) {
+    actions.Storage.updateFile({ id: file.id, content: file.content });
+  }
+};
+
+export const openFileOnBreakPoint: Action<BreakPoint> = (
+  { state, actions },
+  breakPoint
+) => {
+  state.Editor.activeBreakPoint = breakPoint;
 };

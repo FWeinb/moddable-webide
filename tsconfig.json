@@ -2,7 +2,7 @@
   "compilerOptions": {
     "strict": true,
     "target": "es6",
-    "module": "es2015",
+    "module": "esNext",
     "moduleResolution": "node",
     "jsx": "react",
     "lib": ["dom", "es2017"],

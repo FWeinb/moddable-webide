@@ -1,9 +1,16 @@
 import { Action, action } from 'overmind';
 import { DebugState } from './state';
 import { SidebarView } from '../rootState';
+import { getIdByPath } from '../Storage/utils';
 
 export const setDeviceHostName: Action<string> = ({ state }, hostName) => {
   state.Device.host = hostName;
+};
+
+export const disconnectDebugger: Action = ({ state }) => {
+  if (state.Device.debug.connection) {
+    state.Device.debug.connection.disconnect();
+  }
 };
 
 export const connectDebugger: Action = ({ state, effects, actions }) => {
@@ -39,11 +46,15 @@ export const connectDebugger: Action = ({ state, effects, actions }) => {
     const { path, line, message } = info;
 
     actions.Log.addErrorMessage(`Break ${path}:${line}: ${message}`);
-    actions.Editor.openFileOnBreakPoint({
-      path,
-      line,
-      message
-    });
+
+    const fileId = getIdByPath(state.Storage, path);
+    if (fileId) {
+      actions.Editor.openFileOnBreakPoint({
+        fileId,
+        line,
+        message
+      });
+    }
     if (state.selectedSidebarView !== SidebarView.Debug) {
       actions.setActiveSidebarView(SidebarView.Debug);
     }

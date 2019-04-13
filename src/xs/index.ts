@@ -1,9 +1,5 @@
-import XsclWorker from './xscl.worker.js';
-
-type FileObject = {
-  name: string;
-  content: string;
-};
+import XsclWorker from './xscl.worker';
+import { XStorage } from '../overmind/Storage/state';
 
 type MessageType = {
   type: 'error' | 'log';
@@ -29,15 +25,7 @@ export default class XSCL {
       }
     });
   }
-  /**
-   * Files
-   *
-   *    [
-   *      {name:'', content: ''},
-   *    ]
-   *
-   */
-  compile(files: FileObject[]): Promise<string[]> {
+  compile(files: XStorage): Promise<string[]> {
     return new Promise((resolve, reject) => {
       this.worker.postMessage({
         fn: 'compile',

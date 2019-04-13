@@ -4,10 +4,10 @@ import React, { useRef, useEffect, useState } from 'react';
 
 import './style.css';
 
-import WebIDELogo from '../Icons/WebIDELogo';
-
 import monaco from './monaco';
 import ESLint from '../../eslint/index';
+
+import WelcomeScreen from '../WelcomeScreen';
 import { useOvermind } from '../../overmind';
 
 type EditorState = {
@@ -18,60 +18,20 @@ type EditorState = {
   };
 };
 
-const Button: React.FunctionComponent<{ onClick: VoidFunction }> = ({
-  onClick,
-  children
-}) => {
-  return (
-    <div
-      css={{
-        cursor: 'pointer',
-        padding: '.5em 0',
-        color: '#2980b9',
-        ':hover': { color: '#3498db' }
-      }}
-      onClick={onClick}
-    >
-      {children}
-    </div>
-  );
-};
-
-const WelcomeScreen: React.FunctionComponent = () => {
-  const {
-    actions: { loadSampleData, openGist }
-  } = useOvermind();
-  return (
-    <div
-      css={{
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'center',
-        textAlign: 'center',
-        height: '100%'
-      }}
-    >
-      <WebIDELogo
-        color={'rgba(0,0,0,0.2)'}
-        css={{ marginBottom: '1em', height: '40%' }}
-      />
-      <span css={{ color: '#DDD', marginBottom: '1em' }}>
-        Experiment with JavaScript for embedded devices.
-      </span>
-      <Button onClick={loadSampleData}>Load Example Data</Button>
-      <Button onClick={openGist}>Load a GitHub Gist</Button>
-    </div>
-  );
-};
 const Editor: React.FunctionComponent = () => {
   const {
-    actions: {
-      Editor: { addModel, closeModel, updateFile }
-    },
     state: {
-      Editor: { activeFile, activeBreakPoint }
+      Editor: { activeFile, activeBreakPoint },
+      Storage
+    },
+    actions: {
+      Editor: { updateEditorFile }
+    },
+    effects: {
+      Editor: { createModel }
     }
   } = useOvermind();
+
   const [eslint, _] = useState<ESLint>(() => new ESLint());
   const editorStats = useRef<EditorState>({});
   const editorContainer = useRef(null);
@@ -115,11 +75,11 @@ const Editor: React.FunctionComponent = () => {
         const currentModel = editor.current.getModel();
 
         editorStats.current[
-          activeFile.name
+          activeFile.id
         ].version = currentModel.getAlternativeVersionId();
 
-        updateFile({
-          name: activeFile.name,
+        updateEditorFile({
+          id: activeFile.id,
           content: currentModel.getValue(),
           dirty: false
         });
@@ -130,49 +90,55 @@ const Editor: React.FunctionComponent = () => {
   // Open Files
   useEffect(() => {
     if (activeFile && editor.current) {
-      const { name } = activeFile;
-      const state = editorStats.current[name];
-      // is loaded and content is not changed
+      const { id, content } = Storage.files[activeFile.id];
+      const state = editorStats.current[id];
+      // is loaded and content may have changed
       if (state) {
         const { model, viewState } = state;
+        if (model.getValue() !== content) {
+          model.pushEditOperations(
+            [],
+            [
+              {
+                range: model.getFullModelRange(),
+                text: content
+              }
+            ]
+          );
+        }
         editor.current.setModel(model);
         editor.current.restoreViewState(viewState);
         runEslint(model);
       } else {
         // Load new Model
-        const model = monaco.editor.createModel(
-          activeFile.content,
-          'javascript'
-        );
-        addModel({
-          name: activeFile.name,
-          model
-        });
+        const model = createModel(Storage, Storage.files[activeFile.id]);
 
         runEslint(model);
 
         // Register change listener
         model.onDidChangeContent(() => {
-          const state = editorStats.current[activeFile.name];
-          updateFile({
-            name,
-            dirty: state.version !== model.getAlternativeVersionId()
+          updateEditorFile({
+            id: activeFile.id,
+            dirty:
+              editorStats.current[id].version !==
+              model.getAlternativeVersionId()
           });
+
           runEslint(model);
         });
-        editorStats.current[name] = {
+
+        editorStats.current[id] = {
           model,
           version: model.getAlternativeVersionId()
         };
         editor.current.setModel(model);
       }
       return () => {
-        const state = editorStats.current[name];
+        const state = editorStats.current[id];
         monaco.editor.setModelMarkers(state.model, 'eslint', []);
         state.viewState = editor.current.saveViewState();
       };
     } else if (activeFile === undefined) {
-      // Close
       editor.current.setModel(null);
     }
   }, [editor, activeFile]);

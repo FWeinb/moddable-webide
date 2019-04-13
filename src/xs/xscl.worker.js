@@ -30,16 +30,39 @@ self.onmessage = message => {
   if (!data) return;
   if (data.fn === 'compile') {
     XSLC.then(xscl => {
-      const { input: files } = data;
-      const exitCodes = files.map(file => {
-        xscl.FS.writeFile(file.name, file.content);
-        // TODO: Better to pass all files at once
-        // Calling JS/C is a bottleneck
+      const { input: files } = data; // files: Files
+
+      function writeDirAndFiles(parentId, path) {
+        let filePaths = [];
+        Object.values(files.directories).forEach(dir => {
+          if (dir.parent === parentId) {
+            try {
+              xscl.FS.mkdir(path + dir.name);
+            } catch (e) {
+              // it's oky if that file exists
+            }
+            filePaths = filePaths.concat(
+              writeDirAndFiles(dir.id, path + dir.name + '/')
+            );
+          }
+        });
+        Object.values(files.files).forEach(file => {
+          if (file.parent === parentId) {
+            const filePath = path + file.name;
+            xscl.FS.writeFile(filePath, file.content);
+            filePaths.push(filePath);
+          }
+        });
+        return filePaths;
+      }
+
+      const filePaths = writeDirAndFiles(undefined, '/');
+      const exitCodes = filePaths.map(filePath => {
         self.postMessage({
           type: 'log',
-          text: 'Compile: ' + file.name
+          text: 'Compile: ' + filePath
         });
-        return xscl.compile(file.name);
+        return xscl.compile(filePath);
       });
 
       const error = exitCodes.some(exitCode => exitCode !== 0);

@@ -15,9 +15,9 @@ import { CompilerState } from '../../overmind/Compiler/state';
 const EditorTopBar: React.FunctionComponent = () => {
   const {
     actions: {
-      openGist,
       Device: { setDeviceHostName },
-      Compiler: { compileAndUpload }
+      Compiler: { compileAndUpload },
+      askImportGist
     },
     state: {
       Device: { host },
@@ -46,7 +46,10 @@ const EditorTopBar: React.FunctionComponent = () => {
           background: '#2a2a2b'
         }}
       >
-        <Button onClick={() => openGist()} title="Open GitHub Gist">
+        <Button
+          onClick={() => askImportGist()}
+          title="Add files from GitHub Gist"
+        >
           <GistIcon />
         </Button>
         <Input
