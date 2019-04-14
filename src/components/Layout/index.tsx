@@ -3,15 +3,31 @@ import { jsx } from '@emotion/core';
 
 import './styles.css';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import SplitPane from 'react-split-pane';
-import createPersistedState from 'use-persisted-state';
 
 import { useOvermind } from '../../overmind';
 import { SidebarView } from '../../overmind/rootState';
 
-const useSidebarSize = createPersistedState('sidebarSize');
-const useEditorSize = createPersistedState('editorSize');
+const createuseLocalState = key => {
+  return initialState => {
+    const [state, setState] = useState(() => {
+      const item = localStorage.getItem(key);
+      try {
+        return JSON.parse(item);
+      } catch (e) {
+        return initialState;
+      }
+    });
+    useEffect(() => {
+      localStorage.setItem(key, JSON.stringify(state));
+    }, [state]);
+
+    return [state, setState];
+  };
+};
+const useSidebarSize = createuseLocalState('sidebarSize');
+const useEditorSize = createuseLocalState('editorSize');
 
 type Props = {
   sidebar: React.ReactElement;

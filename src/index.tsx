@@ -21,7 +21,7 @@ const App: React.FunctionComponent = () => {
         styles={css`
           * {
             box-sizing: border-box;
-            user-select: none;
+            //user-select: none;
           }
 
           html,

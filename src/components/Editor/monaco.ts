@@ -6,6 +6,9 @@ import 'monaco-editor/esm/vs/editor/contrib/bracketMatching/bracketMatching.js';
 import 'monaco-editor/esm/vs/editor/contrib/folding/folding.js';
 import 'monaco-editor/esm/vs/editor/contrib/smartSelect/smartSelect.js';
 
+import 'monaco-editor/esm/vs/editor/standalone/browser/accessibilityHelp/accessibilityHelp.js';
+import 'monaco-editor/esm/vs/editor/standalone/browser/iPadShowKeyboard/iPadShowKeyboard.js';
+
 import 'monaco-editor/esm/vs/language/typescript/monaco.contribution';
 import 'monaco-editor/esm/vs/basic-languages/javascript/javascript.contribution';
 
