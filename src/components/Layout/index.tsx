@@ -5,9 +5,13 @@ import './styles.css';
 
 import React from 'react';
 import SplitPane from 'react-split-pane';
-import { useLocalStorage } from 'react-use-storage';
+import createPersistedState from 'use-persisted-state';
+
 import { useOvermind } from '../../overmind';
 import { SidebarView } from '../../overmind/rootState';
+
+const useSidebarSize = createPersistedState('sidebarSize');
+const useEditorSize = createPersistedState('editorSize');
 
 type Props = {
   sidebar: React.ReactElement;
@@ -25,8 +29,8 @@ const Layout: React.FunctionComponent<Props> = ({
     state: { selectedSidebarView }
   } = useOvermind();
 
-  const [sidebarSize, setSidebarSize] = useLocalStorage('sidebarSize', 200);
-  const [editorSize, setEditorSize] = useLocalStorage('editorSize', '85%');
+  const [sidebarSize, setSidebarSize] = useSidebarSize(200);
+  const [editorSize, setEditorSize] = useEditorSize('85%');
 
   return (
     <SplitPane

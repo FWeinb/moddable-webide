@@ -36,7 +36,7 @@ const EditorTopBar: React.FunctionComponent = () => {
         paddingLeft: '10px'
       }}
     >
-      <WebIDELogo height="80%" />
+      <WebIDELogo height="30" />
       <div
         css={{
           display: 'flex',

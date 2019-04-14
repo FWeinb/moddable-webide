@@ -17,7 +17,6 @@ export const compileAndUpload: Action = async ({ state, effects, actions }) => {
   await actions.Editor.saveAllFiles();
 
   actions.Device.disconnectDebugger();
-  actions.Log.clear();
 
   try {
     const file: Uint8Array = await effects.Compiler.compile(

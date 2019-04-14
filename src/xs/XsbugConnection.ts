@@ -208,27 +208,9 @@ const XsbugMessageParser = (xml: Document): Array<XsbugMessage> => {
   return messages;
 };
 
-function exponentialBackoff(toTry, max, delay, callback) {
-  var result = toTry();
-
-  if (result) {
-    callback(result);
-  } else {
-    if (max > 0) {
-      setTimeout(function() {
-        exponentialBackoff(toTry, --max, delay * 2, callback);
-      }, delay);
-    }
-  }
-}
-
 export default class XsbugConnection {
-  public connected: boolean;
-
   private connectTimer: NodeJS.Timeout;
   private connectionAttempt: number;
-
-  private watchdogTimer: NodeJS.Timeout;
 
   private uri: string;
   private socket: WebSocket;
@@ -251,8 +233,7 @@ export default class XsbugConnection {
       this.socket.onclose = undefined;
       this.socket.onerror = undefined;
       this.socket.onmessage = undefined;
-      console.log('closed');
-      this.socket.close();
+      //this.socket.close();
     }
   }
 
@@ -267,7 +248,6 @@ export default class XsbugConnection {
 
   private _onOpen(ev: Event) {
     clearTimeout(this.connectTimer);
-    this.connected = true;
     this.onOpen(ev);
   }
 
