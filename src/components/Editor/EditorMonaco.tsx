@@ -2,6 +2,8 @@
 import { jsx } from '@emotion/core';
 import React, { useRef, useEffect, useState } from 'react';
 
+import { disableBodyScroll } from 'body-scroll-lock';
+
 import './style.css';
 
 import monaco from './monaco';
@@ -60,6 +62,7 @@ const Editor: React.FunctionComponent = () => {
       automaticLayout: true
     });
 
+    disableBodyScroll(editor.current);
     return () => {
       editor.current.dispose();
     };

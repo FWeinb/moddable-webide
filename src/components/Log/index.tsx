@@ -5,6 +5,8 @@ import React, { useEffect, useRef } from 'react';
 import { useOvermind } from '../../overmind';
 import { LogType } from '../../overmind/Log/state';
 
+import { disableBodyScroll } from 'body-scroll-lock';
+
 const getLogColor = (type: LogType) => {
   switch (type) {
     case LogType.ERROR:
@@ -24,6 +26,13 @@ const Log: React.FunctionComponent = () => {
   } = useOvermind();
 
   const scrollContainerRef = useRef(null);
+
+  useEffect(() => {
+    const node = scrollContainerRef.current;
+    if (node) {
+      disableBodyScroll(node);
+    }
+  }, [scrollContainerRef]);
 
   useEffect(() => {
     const node = scrollContainerRef.current;

@@ -54,6 +54,7 @@
     "worker-loader": "^2.0.0"
   },
   "dependencies": {
+    "body-scroll-lock": "^2.6.1",
     "monaco-editor": "^0.16.2",
     "overmind": "^17.1.0",
     "overmind-react": "^18.1.0",
