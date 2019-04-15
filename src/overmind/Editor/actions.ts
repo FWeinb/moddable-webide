@@ -1,13 +1,15 @@
 import { Action } from 'overmind';
 import { BreakPoint, EditorFile } from './state';
+import { getIdByPath } from '../Storage/utils';
+import state from '../Device/state';
 
 export const closeAllFiles: Action = ({ state }) => {
   state.Editor.activeFile = undefined;
   state.Editor.openTabs = [];
 };
 
-export const saveAllFiles: Action = ({ actions, effects }) => {
-  const models = effects.Editor.getOpenModels();
+export const saveAllFiles: Action = ({ state, actions, effects }) => {
+  const models = effects.Editor.getOpenModels(state.Storage);
   models.forEach(m => {
     actions.Editor.updateEditorFile({
       id: m.id,
@@ -15,6 +17,15 @@ export const saveAllFiles: Action = ({ actions, effects }) => {
       dirty: false
     });
   });
+};
+
+export const openFileByResourceInput: Action<any> = (
+  { state, actions: { Editor } },
+  input
+) => {
+  const id = getIdByPath(state.Storage, input.resource.path);
+  Editor.openFile(id);
+  state.Editor.openSelection = input.options;
 };
 
 export const openFile: Action<string> = ({ state }, fileId) => {
@@ -78,5 +89,6 @@ export const openFileOnBreakPoint: Action<BreakPoint> = (
   { state, actions },
   breakPoint
 ) => {
+  actions.Editor.openFile(breakPoint.fileId);
   state.Editor.activeBreakPoint = breakPoint;
 };

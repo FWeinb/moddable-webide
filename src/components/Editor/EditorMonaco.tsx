@@ -23,14 +23,14 @@ type EditorState = {
 const Editor: React.FunctionComponent = () => {
   const {
     state: {
-      Editor: { activeFile, activeBreakPoint },
+      Editor: { openSelection, activeFile, activeBreakPoint },
       Storage
     },
     actions: {
       Editor: { updateEditorFile }
     },
     effects: {
-      Editor: { createModel }
+      Editor: { getModel }
     }
   } = useOvermind();
 
@@ -110,11 +110,12 @@ const Editor: React.FunctionComponent = () => {
           );
         }
         editor.current.setModel(model);
+        monaco.editor.setModelLanguage(editor.current.getModel(), 'javascript');
         editor.current.restoreViewState(viewState);
         runEslint(model);
       } else {
         // Load new Model
-        const model = createModel(Storage, Storage.files[activeFile.id]);
+        const model = getModel(Storage, Storage.files[activeFile.id]);
 
         runEslint(model);
 
@@ -160,7 +161,7 @@ const Editor: React.FunctionComponent = () => {
           range: new monaco.Range(line, 1, line, 1),
           options: {
             isWholeLine: true,
-            stickiness: 1 /* NeverGrowsWhenTypingAtEdges */,
+            stickiness: 1,
             className: 'line-Breakpoint',
             linesDecorationsClassName: 'glyph-Breakpoint',
             glyphMarginHoverMessage: {
@@ -174,6 +175,28 @@ const Editor: React.FunctionComponent = () => {
       editor.current.deltaDecorations(oldDecorations, []);
     };
   }, [editor, activeBreakPoint]);
+
+  useEffect(() => {
+    if (!openSelection) return;
+    let { selection } = openSelection;
+    if (selection) {
+      if (
+        typeof selection.endLineNumber === 'number' &&
+        typeof selection.endColumn === 'number'
+      ) {
+        editor.current.setSelection(selection);
+        editor.current.revealRangeInCenter(selection, 1 /* Immediate */);
+      } else {
+        var pos = {
+          lineNumber: selection.startLineNumber,
+          column: selection.startColumn
+        };
+        editor.current.setPosition(pos);
+        editor.current.revealPositionInCenter(pos, 1 /* Immediate */);
+      }
+    }
+  }, [editor, openSelection]);
+
   return (
     <React.Fragment>
       <div

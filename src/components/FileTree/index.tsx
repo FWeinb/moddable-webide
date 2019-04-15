@@ -5,14 +5,14 @@ import React, {
   useState,
   useCallback,
   useEffect,
-  PropsWithChildren
+  PropsWithChildren,
+  useRef
 } from 'react';
 import { useDropzone } from 'react-dropzone';
 
 import { useOvermind } from '../../overmind';
 import { XFile, Directory, XStorage } from '../../overmind/Storage/state';
 
-import Button from '../Button';
 import FolderIcon from '../Icons/FolderIcon';
 import JsFileIcon from '../Icons/JsFileIcon';
 import { EditorFile } from '../../overmind/Editor/state';
@@ -20,13 +20,34 @@ import { isFilePartOf } from '../../overmind/Storage/utils';
 
 import { NewFileButton, NewFolderButton, DeleteButton } from './Buttons';
 
+const useFocus = (domReference: React.RefObject<HTMLElement>) => {
+  const [focused, setFocused] = useState(false);
+  const onclick = useCallback(
+    e => {
+      if (domReference) {
+        setFocused(domReference.current.contains(e.target));
+      }
+    },
+    [domReference]
+  );
+  useEffect(() => {
+    document.addEventListener('mousedown', onclick);
+    return () => {
+      document.removeEventListener('mousedown', onclick);
+    };
+  }, [domReference]);
+  return focused;
+};
+
 type ItemConainerProps = {
+  focused: boolean;
   selected: boolean;
   depth: number;
   children: ({ hover: boolean }) => React.ReactElement;
 };
 
 const ItemContainer: React.FC<ItemConainerProps> = ({
+  focused,
   selected,
   depth,
   children
@@ -35,7 +56,11 @@ const ItemContainer: React.FC<ItemConainerProps> = ({
 
   const additionStyles = selected
     ? {
-        color: 'var(--color-text)',
+        color: focused ? 'var(--color-text)' : 'var(--color-text-muted)',
+        background: focused ? 'var(--color-accent)' : 'var(--color-lightest)'
+      }
+    : hover
+    ? {
         background: 'var(--color-light)'
       }
     : {};
@@ -48,6 +73,7 @@ const ItemContainer: React.FC<ItemConainerProps> = ({
         height: 22
       }}
       style={{
+        color: 'var(--color-text-muted)',
         ...additionStyles,
         padding: `.125em 0 .125em ${0.75 + depth * 0.7}em`
       }}
@@ -128,8 +154,7 @@ const FileItem: React.FunctionComponent<FileItemProp> = ({ file, hover }) => {
       onClick={() => openFile(file.id)}
       css={{
         display: 'flex',
-        cursor: 'pointer',
-        color: 'var(--color-text-muted)'
+        cursor: 'pointer'
       }}
     >
       <span>
@@ -161,6 +186,7 @@ const activeDrag = css`
 `;
 
 type DirectoryContainerProps = PropsWithChildren<{
+  focused: boolean;
   dir: Directory;
   depth: number;
   activeFile: EditorFile;
@@ -169,6 +195,7 @@ type DirectoryContainerProps = PropsWithChildren<{
 }>;
 
 const DirectoryContainer: React.FC<DirectoryContainerProps> = ({
+  focused,
   dir,
   depth,
   parentDirId,
@@ -186,7 +213,7 @@ const DirectoryContainer: React.FC<DirectoryContainerProps> = ({
   }, [activeFile]);
   return (
     <React.Fragment>
-      <ItemContainer depth={depth} selected={false}>
+      <ItemContainer focused={focused} depth={depth} selected={false}>
         {({ hover }) => (
           <DirItem
             parentId={dir.id}
@@ -203,6 +230,7 @@ const DirectoryContainer: React.FC<DirectoryContainerProps> = ({
 };
 
 type DirectoryProps = {
+  focused: boolean;
   parentDirId?: string;
   Storage: XStorage;
   activeFile: EditorFile;
@@ -211,6 +239,7 @@ type DirectoryProps = {
 };
 
 const Dir: React.FC<DirectoryProps> = ({
+  focused,
   parentDirId,
   Storage,
   activeFile,
@@ -238,6 +267,7 @@ const Dir: React.FC<DirectoryProps> = ({
         .map(dir => {
           return (
             <DirectoryContainer
+              focused={focused}
               key={dir.id}
               depth={depth}
               Storage={Storage}
@@ -246,6 +276,7 @@ const Dir: React.FC<DirectoryProps> = ({
               activeFile={activeFile}
             >
               <Dir
+                focused={focused}
                 Storage={Storage}
                 activeFile={activeFile}
                 parentDirId={dir.id}
@@ -259,6 +290,7 @@ const Dir: React.FC<DirectoryProps> = ({
         .filter(file => file.parent === parentDirId)
         .map(file => (
           <ItemContainer
+            focused={focused}
             key={file.id}
             depth={depth}
             selected={activeFile && activeFile.id === file.id}
@@ -281,6 +313,8 @@ const FileTree: React.FunctionComponent = () => {
     }
   } = useOvermind();
 
+  const domRef = useRef<HTMLElement>();
+  const focused = useFocus(domRef);
   const [hover, setHover] = useState(false);
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
     addDroppedFiles(acceptedFiles);
@@ -294,7 +328,10 @@ const FileTree: React.FunctionComponent = () => {
   });
 
   return (
-    <section css={{ display: 'flex', flexDirection: 'column', flexGrow: 1 }}>
+    <section
+      ref={domRef}
+      css={{ display: 'flex', flexDirection: 'column', flexGrow: 1 }}
+    >
       <header
         onMouseEnter={() => setHover(true)}
         onMouseLeave={() => setHover(false)}
@@ -307,7 +344,6 @@ const FileTree: React.FunctionComponent = () => {
           fontSize: 11,
           height: 22,
           fontWeight: 500,
-          color: 'var(--color-text-muted)',
           background: 'var(--color-light2)'
         }}
       >
@@ -333,7 +369,12 @@ const FileTree: React.FunctionComponent = () => {
         css={[{ height: '100%' }, isDragActive && activeDrag]}
         {...getRootProps()}
       >
-        <Dir activeFile={activeFile} Storage={Storage} depth={0} />
+        <Dir
+          focused={focused}
+          activeFile={activeFile}
+          Storage={Storage}
+          depth={0}
+        />
       </div>
     </section>
   );

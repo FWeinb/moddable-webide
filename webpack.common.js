@@ -31,7 +31,9 @@ module.exports = {
   module: {
     rules: [
       {
-        test: /\.worker\.js$/,
+        // using xworker here
+        // to not interfere with monaco-editor
+        test: /\.xworker\.js$/,
         use: { loader: 'worker-loader' }
       },
       {

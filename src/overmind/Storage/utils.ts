@@ -41,15 +41,18 @@ const getIdForPath = (
   parentId: string
 ) => {
   const currPath = path.shift();
+  const file = files.find(f => f.name === currPath && f.parent === parentId);
+  if (file) {
+    return file.id;
+  }
   if (path.length > 0) {
     const dir = dirs.find(
       dir => dir.name === currPath && dir.parent === parentId
     );
-
-    return getIdForPath(dirs, files, path, dir.id);
+    if (dir) {
+      return getIdForPath(dirs, files, path, dir.id);
+    }
   }
-  const file = files.find(f => f.name === currPath && f.parent === parentId);
-  return file.id;
 };
 
 export const getIdByPath = (storage: XStorage, path: string) => {

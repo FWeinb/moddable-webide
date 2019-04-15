@@ -1,4 +1,4 @@
-import EslintWorker from './eslint.worker';
+import EslintWorker from './eslint.xworker';
 import monaco from '../components/Editor/monaco';
 
 export default class ESLint {

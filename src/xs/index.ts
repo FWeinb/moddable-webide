@@ -1,4 +1,4 @@
-import XsclWorker from './xscl.worker';
+import XsclWorker from './xscl.xworker';
 import { XStorage } from '../overmind/Storage/state';
 
 type MessageType = {

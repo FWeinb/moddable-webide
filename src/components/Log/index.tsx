@@ -65,7 +65,8 @@ const Log: React.FunctionComponent = () => {
           color: 'white',
           fontSize: '12px',
           lineHeight: '16px',
-          overflow: 'scroll'
+          overflow: 'scroll',
+          userSelect: 'all'
         }}
         ref={scrollContainerRef}
         className="scrolling"

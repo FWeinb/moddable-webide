@@ -47,7 +47,8 @@ export const connectDebugger: Action = ({ state, effects, actions }) => {
 
     actions.Log.addErrorMessage(`Break ${path}:${line}: ${message}`);
 
-    const fileId = getIdByPath(state.Storage, path);
+    const fileId = getIdByPath(state.Storage, path.substring(1));
+    console.log(path.substring(1), fileId);
     if (fileId) {
       actions.Editor.openFileOnBreakPoint({
         fileId,

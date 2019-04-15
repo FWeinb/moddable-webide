@@ -28,6 +28,5 @@ declare module 'overmind' {
   interface Config extends IConfig<typeof config> {}
 }
 
-const overmind = new Overmind(config, { devtools: 'localhost:3031' });
-
+export const overmind = new Overmind(config, { devtools: 'localhost:3031' });
 export const useOvermind = createHook(overmind);
