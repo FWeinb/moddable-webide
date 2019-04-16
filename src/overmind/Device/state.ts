@@ -2,7 +2,8 @@ import XsbugConnection from '../../xs/XsbugConnection';
 
 export type DeviceInstrument = {
   name: string;
-  value: string;
+  value: string[];
+  indices: string[];
 };
 
 export enum DebugState {
@@ -15,8 +16,8 @@ export enum DebugState {
 export type DebugConnection = {
   state: DebugState;
   connection: XsbugConnection;
-  instruments: Array<DeviceInstrument>;
-  samples: Array<number>;
+  instruments: DeviceInstrument[];
+  samples: number[][];
 };
 
 export type Device = {

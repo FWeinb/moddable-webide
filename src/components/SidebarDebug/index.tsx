@@ -3,11 +3,60 @@ import { jsx } from '@emotion/core';
 
 import React from 'react';
 import { useOvermind } from '../../overmind';
-import { DebugState } from '../../overmind/Device/state';
+import { DebugState, DeviceInstrument } from '../../overmind/Device/state';
 import Button from '../Button';
+import BarGraph from './BarGraph';
 
 const AskToConnect: React.FC = () => {
   return <div>Currently Not Connected</div>;
+};
+
+function zip(a: any[], b: any[]) {
+  var arr = [];
+  for (var key in a) arr.push([a[key], b[key]]);
+  return arr;
+}
+
+type InstrumentsGraphsProps = {
+  instruments: DeviceInstrument[];
+  samples: number[][];
+};
+
+const InstrumentsGraphs: React.FC<InstrumentsGraphsProps> = ({
+  instruments,
+  samples
+}) => {
+  return (
+    <React.Fragment>
+      {instruments.map(({ name, value, indices }) => {
+        const [hoverIndex, setHoverIndex] = React.useState();
+
+        const series = indices.map(index => samples[index]);
+        let pickedValue;
+        if (hoverIndex) {
+          pickedValue = series.map(v => v[hoverIndex]);
+        } else {
+          pickedValue = series.map(last => last[last.length - 1]);
+        }
+
+        return (
+          <div key={name} css={{ marginBottom: '.5em' }}>
+            <header css={{ fontSize: 11 }}>
+              <span>{name}</span>
+              <span css={{ float: 'right' }}>{zip(pickedValue, value)}</span>
+            </header>
+            <BarGraph
+              onHover={setHoverIndex}
+              barWidth={2}
+              height={20}
+              width="100%"
+              series={series[0]}
+            />
+          </div>
+        );
+      })}
+    </React.Fragment>
+  );
 };
 
 const InstrumentationView: React.FC = () => {
@@ -19,27 +68,41 @@ const InstrumentationView: React.FC = () => {
     }
   } = useOvermind();
   return (
-    instruments &&
-    samples && (
-      <ul
+    <section
+      css={{
+        display: 'flex',
+        flexDirection: 'column',
+        minHeight: 0
+      }}
+    >
+      <header
         css={{
-          listStyle: 'none',
-          margin: 0,
-          padding: '0 0.5em',
-          fontSize: 12
+          flexShrink: 0,
+          display: 'flex',
+          alignItems: 'center',
+          position: 'relative',
+          paddingLeft: '1em',
+          textTransform: 'uppercase',
+          fontSize: 11,
+          height: 22,
+          fontWeight: 500,
+          background: 'var(--color-light2)'
         }}
       >
-        {instruments.map((instrument, index) => {
-          return (
-            <li key={instrument.name} css={{ padding: 0, margin: 0 }}>
-              <span>{instrument.name}: </span>
-              <span>{samples[index]}</span>
-              <span>{instrument.value}</span>
-            </li>
-          );
-        })}
-      </ul>
-    )
+        <span>Instruments</span>
+      </header>
+      <section
+        className={'scrolling'}
+        css={{
+          padding: '5px 11px',
+          overflow: 'auto'
+        }}
+      >
+        {instruments && samples && (
+          <InstrumentsGraphs instruments={instruments} samples={samples} />
+        )}
+      </section>
+    </section>
   );
 };
 
@@ -57,22 +120,24 @@ const SidebarDebug: React.FunctionComponent = () => {
 
   return (
     <section
-      role="Debug"
+      role="complementary"
       css={{
         display: 'flex',
         flexDirection: 'column',
         background: 'var(--color-dark)',
-        height: '100%'
+        height: '100%',
+        fontSize: '0.9rem'
       }}
     >
       <header
         css={{
-          margin: '0.5em 0',
-          fontSize: '0.9rem',
+          display: 'flex',
+          alignItems: 'center',
+          height: 30,
+          fontSize: '0.8em',
           padding: '0 10px',
           textTransform: 'uppercase',
-          color: '#6e7a82',
-          paddingBottom: '0.25rem'
+          color: 'var(--color-text-muted)'
         }}
       >
         Debug

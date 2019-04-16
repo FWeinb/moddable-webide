@@ -1,7 +1,8 @@
-import { Action, action } from 'overmind';
+import { Action } from 'overmind';
 import { DebugState } from './state';
 import { SidebarView } from '../rootState';
 import { getIdByPath } from '../Storage/utils';
+import { cleanInstrumentData } from './utils';
 
 export const setDeviceHostName: Action<string> = ({ state }, hostName) => {
   state.Device.host = hostName;
@@ -21,11 +22,21 @@ export const connectDebugger: Action = ({ state, effects, actions }) => {
   );
 
   debugConnection.onInstrumentationConfigure = config => {
-    state.Device.debug.instruments = config.instruments;
+    state.Device.debug.instruments = cleanInstrumentData(config.instruments);
   };
 
   debugConnection.onInstrumentationSamples = config => {
-    state.Device.debug.samples = config.samples;
+    if (!state.Device.debug.samples) {
+      state.Device.debug.samples = config.samples.map(sample => [sample]);
+    } else {
+      config.samples.forEach((sample, index) => {
+        state.Device.debug.samples[index].push(sample);
+        state.Device.debug.samples[index].splice(
+          0,
+          state.Device.debug.samples[index].length - 100
+        );
+      });
+    }
   };
 
   debugConnection.onConnectionError = () => {
@@ -48,7 +59,6 @@ export const connectDebugger: Action = ({ state, effects, actions }) => {
     actions.Log.addErrorMessage(`Break ${path}:${line}: ${message}`);
 
     const fileId = getIdByPath(state.Storage, path.substring(1));
-    console.log(path.substring(1), fileId);
     if (fileId) {
       actions.Editor.openFileOnBreakPoint({
         fileId,

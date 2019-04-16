@@ -1,7 +1,7 @@
 /** @jsx jsx */
 import { jsx } from '@emotion/core';
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import ReactDOM from 'react-dom';
 
 import { Global, css } from '@emotion/core';
@@ -87,10 +87,24 @@ const App: React.FunctionComponent = () => {
         >
           <TopBar />
         </div>
-        <div css={{ gridRow: 2, gridColumn: 1 }}>
+        <div
+          css={{
+            position: 'relative',
+            gridRow: 2,
+            gridColumn: 1,
+            height: 'calc(100vh - 40px)'
+          }}
+        >
           <ActivityBar />
         </div>
-        <div css={{ gridRow: 2, gridColumn: 2 }}>
+        <div
+          css={{
+            position: 'relative',
+            gridRow: 2,
+            gridColumn: 2,
+            height: 'calc(100vh - 40px)'
+          }}
+        >
           <Layout
             content={<Editor />}
             sidebar={<SidebarViewContainer />}

@@ -20,7 +20,7 @@ type EditorState = {
   };
 };
 
-const Editor: React.FunctionComponent = () => {
+const Editor: React.FC = () => {
   const {
     state: {
       Editor: { openSelection, activeFile, activeBreakPoint },
