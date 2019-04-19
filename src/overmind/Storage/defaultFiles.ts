@@ -1,6 +1,8 @@
 import { XStorage } from './state';
 
-export const files: XStorage = {
+export const createSampleFiles = (
+  banner: string
+): Omit<XStorage, 'project'> => ({
   directories: {
     '0': {
       id: '0',
@@ -126,8 +128,7 @@ export default Ping;
       id: '2',
       name: 'mod.js',
       content: `
-// runmod has no support for paths yet..
-// should be "src/ping"
+${banner}
 import Ping from "ping";
 
 const HOST = "www.moddable.com";
@@ -152,4 +153,4 @@ let ping = new Ping({host: HOST, id: ID, interval: INTERVAL}, (message, value, e
 `.trim()
     }
   }
-};
+});

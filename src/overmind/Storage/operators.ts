@@ -2,7 +2,7 @@ import { mutate, run, map, Operator } from 'overmind';
 import { XFile, XStorage, Directory } from './state';
 import { generateNodeId } from './utils';
 
-export const setFiles: Operator<XStorage> = mutate(
+export const setFiles: Operator<Omit<XStorage, 'project'>> = mutate(
   ({ state }, { files, directories }) => {
     state.Storage.files = files;
     state.Storage.directories = directories;
@@ -43,19 +43,24 @@ export const persist: Operator = run(({ state, effects }) => {
   effects.Storage.saveToLocalStorage(state.Storage);
 });
 
-export const loadLocal: Operator<void, XStorage> = map(({ effects }) => {
-  return (
-    effects.Storage.loadFromLocalStorage() || {
-      directories: {},
-      files: {}
-    }
-  );
-});
+export const loadLocal: Operator<string, XStorage> = map(
+  ({ effects }, projectName) => {
+    return (
+      effects.Storage.loadFromLocalStorage(projectName) || {
+        project: null,
+        directories: {},
+        files: {}
+      }
+    );
+  }
+);
 
-export const getSampleFiles: Operator<void, XStorage> = map(async ({}) => {
-  const { files } = await import('./defaultFiles');
-  return files;
-});
+export const getSampleFiles: Operator<string, Omit<XStorage, 'project'>> = map(
+  async ({}, banner) => {
+    const { createSampleFiles } = await import('./defaultFiles');
+    return createSampleFiles(banner);
+  }
+);
 
 export const readDroppedFiles: Operator<File[], XFile[]> = map(
   async (_, files) => {

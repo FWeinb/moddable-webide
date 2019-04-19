@@ -4,7 +4,6 @@ import React from 'react';
 import { useOvermind } from '../../overmind';
 
 import WebIDELogo from '../Icons/WebIDELogo';
-import { askImportGist } from '../../overmind/actions';
 
 const Button: React.FunctionComponent<{ onClick: VoidFunction }> = ({
   onClick,
@@ -14,8 +13,9 @@ const Button: React.FunctionComponent<{ onClick: VoidFunction }> = ({
     <div
       css={{
         cursor: 'pointer',
-        padding: '.5em 0',
+        padding: '.125em 0',
         color: '#2980b9',
+        margin: '.125em .125em',
         ':hover': { color: '#3498db' }
       }}
       onClick={onClick}
@@ -27,11 +27,21 @@ const Button: React.FunctionComponent<{ onClick: VoidFunction }> = ({
 
 const WelcomeScreen: React.FunctionComponent = () => {
   const {
+    state: {
+      Storage: { project: currentProject }
+    },
     actions: {
-      Storage: { loadSampleData },
-      askImportGist
+      Storage: { loadSampleData, openProject },
+      askImportGist,
+      askNewProject
+    },
+    effects: {
+      Storage: { getProjectList }
     }
   } = useOvermind();
+
+  const projects = getProjectList().filter(name => name !== currentProject);
+
   return (
     <div
       css={{
@@ -42,15 +52,38 @@ const WelcomeScreen: React.FunctionComponent = () => {
         height: '100%'
       }}
     >
-      <WebIDELogo
-        color={'rgba(0,0,0,0.2)'}
-        css={{ marginBottom: '1em', height: '40%' }}
-      />
-      <span css={{ color: '#DDD', marginBottom: '1em' }}>
+      <div css={{ height: '30%' }}>
+        <WebIDELogo color={'rgba(0,0,0,0.2)'} css={{ height: '100%' }} />
+      </div>
+      <span css={{ color: '#DDD', marginBottom: '.5em' }}>
         Experiment with JavaScript for embedded devices.
       </span>
-      <Button onClick={loadSampleData}>Load Example Data</Button>
-      <Button onClick={askImportGist}>Add files from GitHub Gist</Button>
+      <section
+        css={{
+          display: 'flex',
+          justifyContent: 'center',
+          textAlign: 'center'
+        }}
+      >
+        {projects.length > 0 && (
+          <section css={{ marginRight: '.5em' }}>
+            <header>Open Project:</header>
+            <section css={{ display: 'flex', flexDirection: 'column' }}>
+              {projects.map(name => (
+                <Button key={name} onClick={() => openProject(name)}>
+                  {name}
+                </Button>
+              ))}
+            </section>
+          </section>
+        )}
+        <section>
+          <header>Actions:</header>
+          <Button onClick={askNewProject}>Create a new Project</Button>
+          <Button onClick={() => loadSampleData('')}>Load example data</Button>
+          <Button onClick={askImportGist}>Import GitHub Gist</Button>
+        </section>
+      </section>
     </div>
   );
 };

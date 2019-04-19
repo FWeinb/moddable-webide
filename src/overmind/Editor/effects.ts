@@ -22,6 +22,10 @@ export const getModel = (
   return model;
 };
 
+export const disposeAllModels = () => {
+  return monaco.editor.getModels().forEach(model => model.dispose());
+};
+
 export const getOpenModels = (
   Storage: XStorage
 ): { id: string; content: string }[] => {

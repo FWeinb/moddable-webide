@@ -1,3 +1,5 @@
+import { string } from 'prop-types';
+
 export type INode = {
   id: string;
   name: string;
@@ -12,6 +14,7 @@ export type XFile = INode & {
 // Naming this storage is clashing with
 // WebStorage API
 export type XStorage = {
+  project: string;
   directories: {
     [id: string]: Directory;
   };
@@ -21,6 +24,7 @@ export type XStorage = {
 };
 
 const state: XStorage = {
+  project: null,
   directories: {},
   files: {}
 };

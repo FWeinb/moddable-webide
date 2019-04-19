@@ -19,6 +19,7 @@ import { EditorFile } from '../../overmind/Editor/state';
 import { isFilePartOf } from '../../overmind/Storage/utils';
 
 import { NewFileButton, NewFolderButton, DeleteButton } from './Buttons';
+import { askRemoveProject } from '../../overmind/actions';
 
 const useFocus = (domReference: React.RefObject<HTMLElement>) => {
   const [focused, setFocused] = useState(false);
@@ -309,7 +310,8 @@ const FileTree: React.FunctionComponent = () => {
       Editor: { activeFile }
     },
     actions: {
-      Storage: { addDroppedFiles, createNewFile, createNewFolder }
+      Storage: { addDroppedFiles, createNewFile, createNewFolder },
+      askRemoveProject
     }
   } = useOvermind();
 
@@ -347,7 +349,7 @@ const FileTree: React.FunctionComponent = () => {
           background: 'var(--color-light2)'
         }}
       >
-        <span>Files</span>
+        <span>{Storage.project ? Storage.project : 'Files'}</span>
         <section
           css={{
             display: 'flex',
@@ -362,6 +364,11 @@ const FileTree: React.FunctionComponent = () => {
           />
           <NewFolderButton
             onClick={e => (e.stopPropagation(), createNewFolder(undefined))}
+          />
+          <DeleteButton
+            onClick={e => (
+              e.stopPropagation(), askRemoveProject(Storage.project)
+            )}
           />
         </section>
       </header>

@@ -1,11 +1,12 @@
 import { Action } from 'overmind';
 import { BreakPoint, EditorFile } from './state';
 import { getIdByPath } from '../Storage/utils';
-import state from '../Device/state';
 
-export const closeAllFiles: Action = ({ state }) => {
+export const closeAllFiles: Action = ({ state, actions, effects }) => {
+  actions.Editor.saveAllFiles();
   state.Editor.activeFile = undefined;
   state.Editor.openTabs = [];
+  effects.Editor.disposeAllModels();
 };
 
 export const saveAllFiles: Action = ({ state, actions, effects }) => {
@@ -68,6 +69,7 @@ export const updateEditorFile: Action<EditorFile & { content?: string }> = (
   file
 ) => {
   if (
+    state.Editor.activeFile &&
     state.Editor.activeFile.id === file.id &&
     state.Editor.activeFile.dirty !== file.dirty
   ) {

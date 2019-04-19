@@ -9,11 +9,12 @@ import SplitPane from 'react-split-pane';
 import { useOvermind } from '../../overmind';
 import { SidebarView } from '../../overmind/rootState';
 
-const createuseLocalState = key => {
+const createUseLocalState = key => {
   return initialState => {
     const [state, setState] = useState(() => {
-      const item = localStorage.getItem(key);
       try {
+        const item = localStorage.getItem(key);
+        if (item === null) return initialState;
         return JSON.parse(item);
       } catch (e) {
         return initialState;
@@ -26,8 +27,8 @@ const createuseLocalState = key => {
     return [state, setState];
   };
 };
-const useSidebarSize = createuseLocalState('sidebarSize');
-const useEditorSize = createuseLocalState('editorSize');
+const useSidebarSize = createUseLocalState('sidebarSize');
+const useEditorSize = createUseLocalState('editorSize');
 
 type Props = {
   sidebar: React.ReactElement;

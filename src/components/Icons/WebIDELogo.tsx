@@ -11,7 +11,7 @@ const WebIDELogo: React.FC<WebIDELogoProps> = ({
 }) => {
   return (
     <svg viewBox="0 0 60 25" {...props}>
-      <text fill={color} x="0" y="19" fontSize="16">
+      <text fill={color} x="3" y="19" fontSize="16">
         WebIDE
       </text>
     </svg>

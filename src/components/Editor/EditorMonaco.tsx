@@ -15,7 +15,6 @@ import { useOvermind } from '../../overmind';
 type EditorState = {
   [name: string]: {
     version?: number;
-    model?: any;
     viewState?: any;
   };
 };
@@ -93,32 +92,17 @@ const Editor: React.FC = () => {
   // Open Files
   useEffect(() => {
     if (activeFile && editor.current) {
-      const { id, content } = Storage.files[activeFile.id];
+      const { id } = Storage.files[activeFile.id];
+
+      const model = getModel(Storage, Storage.files[activeFile.id]);
+      editor.current.setModel(model);
+
       const state = editorStats.current[id];
       // is loaded and content may have changed
       if (state) {
-        const { model, viewState } = state;
-        if (model.getValue() !== content) {
-          model.pushEditOperations(
-            [],
-            [
-              {
-                range: model.getFullModelRange(),
-                text: content
-              }
-            ]
-          );
-        }
-        editor.current.setModel(model);
-        monaco.editor.setModelLanguage(editor.current.getModel(), 'javascript');
+        const { viewState } = state;
         editor.current.restoreViewState(viewState);
-        runEslint(model);
       } else {
-        // Load new Model
-        const model = getModel(Storage, Storage.files[activeFile.id]);
-
-        runEslint(model);
-
         // Register change listener
         model.onDidChangeContent(() => {
           updateEditorFile({
@@ -127,20 +111,18 @@ const Editor: React.FC = () => {
               editorStats.current[id].version !==
               model.getAlternativeVersionId()
           });
-
           runEslint(model);
         });
-
         editorStats.current[id] = {
-          model,
           version: model.getAlternativeVersionId()
         };
         editor.current.setModel(model);
       }
+      runEslint(model);
+
+      // Save the editor state before unloading
       return () => {
-        const state = editorStats.current[id];
-        monaco.editor.setModelMarkers(state.model, 'eslint', []);
-        state.viewState = editor.current.saveViewState();
+        editorStats.current[id].viewState = editor.current.saveViewState();
       };
     } else if (activeFile === undefined) {
       editor.current.setModel(null);
@@ -201,7 +183,7 @@ const Editor: React.FC = () => {
     <React.Fragment>
       <div
         ref={editorContainer}
-        css={{ width: '100%', height: '100%', userSelect: 'all' }}
+        css={{ width: '100%', height: '100%' }}
         style={{ display: activeFile ? 'block' : 'none' }}
       />
       {activeFile === undefined ? <WelcomeScreen /> : null}

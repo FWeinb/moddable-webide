@@ -4,6 +4,46 @@ import * as o from './operators';
 import { generateNodeId } from './utils';
 import { XStorage } from './state';
 
+export const openProject: Action<string> = (
+  { state, actions },
+  projectName
+) => {
+  actions.Editor.closeAllFiles();
+
+  state.Storage.project = projectName;
+  actions.Storage.restoreFromLocalStorage(projectName ? projectName : null);
+
+  // Update url
+  var newurl = location.origin + location.pathname + '?project=' + projectName;
+  window.history.pushState(null, '', newurl);
+
+  // Try open entry point
+  const modFile = Object.values(state.Storage.files).find(
+    file => file.name === 'mod.js'
+  );
+  if (modFile) {
+    actions.Editor.openFile(modFile.id);
+  }
+};
+
+export const removeProject: Action<string> = (
+  { state, actions, effects },
+  projectName
+) => {
+  if (state.Storage.project === projectName) {
+    actions.Editor.closeAllFiles();
+  }
+  state.Storage.project = null;
+  state.Storage.files = {};
+  state.Storage.directories = {};
+
+  effects.Storage.removeProject(projectName);
+
+  // Update url
+  var newurl = location.origin + location.pathname;
+  window.history.pushState(null, '', newurl);
+};
+
 export const createNewFile: Action<string> = pipe(
   mutate(({ state, actions }, folderId) => {
     const name = window.prompt('File Name', 'unknown.js');
@@ -105,7 +145,7 @@ export const removeFile: Action<string> = pipe(
   o.persist
 );
 
-export const restoreFromLocalStorage: Action = pipe(
+export const restoreFromLocalStorage: Action<string> = pipe(
   o.loadLocal,
   o.setFiles,
   o.persist
@@ -119,7 +159,7 @@ export const addFiles: Action<XStorage> = pipe(
   o.persist
 );
 
-export const loadSampleData: Action = pipe(
+export const loadSampleData: Action<string> = pipe(
   o.getSampleFiles,
   o.setFiles,
   o.persist,
