@@ -39,7 +39,7 @@ self.onmessage = message => {
             try {
               xscl.FS.mkdir(path + dir.name);
             } catch (e) {
-              // it's oky if that file exists
+              // it's okay if that folder exists
             }
             filePaths = filePaths.concat(
               writeDirAndFiles(dir.id, path + dir.name + '/')
@@ -49,7 +49,13 @@ self.onmessage = message => {
         Object.values(files.files).forEach(file => {
           if (file.parent === parentId) {
             const filePath = path + file.name;
-            xscl.FS.writeFile(filePath, file.content);
+            if (file.binary) {
+              xscl.FS.writeFile(filePath, new Uint8Array(file.content), {
+                encoding: 'binary'
+              });
+            } else {
+              xscl.FS.writeFile(filePath, file.content);
+            }
             filePaths.push(filePath);
           }
         });
@@ -57,13 +63,15 @@ self.onmessage = message => {
       }
 
       const filePaths = writeDirAndFiles(undefined, '/');
-      const exitCodes = filePaths.map(filePath => {
-        self.postMessage({
-          type: 'log',
-          text: 'Compile: ' + filePath
+      const exitCodes = filePaths
+        .filter(path => path.endsWith('.js'))
+        .map(filePath => {
+          self.postMessage({
+            type: 'log',
+            text: 'Compile: ' + filePath
+          });
+          return xscl.compile(filePath);
         });
-        return xscl.compile(filePath);
-      });
 
       const error = exitCodes.some(exitCode => exitCode !== 0);
 

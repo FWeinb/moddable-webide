@@ -1,5 +1,3 @@
-import { string } from 'prop-types';
-
 export type INode = {
   id: string;
   name: string;
@@ -8,7 +6,8 @@ export type INode = {
 export type Directory = INode;
 
 export type XFile = INode & {
-  content: string;
+  binary: boolean;
+  content: string | ArrayBuffer;
 };
 
 // Naming this storage is clashing with

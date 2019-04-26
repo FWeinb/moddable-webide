@@ -1,37 +1,44 @@
+import localforage from 'localforage';
 import { XStorage } from './state';
+import { json } from 'overmind';
 const storageKey = 'storage';
+
+var projectStorage = localforage.createInstance({
+  name: 'Storage'
+});
 
 const getProjectStorageKey = (project: string) => {
   return project ? project + `.${storageKey}` : storageKey;
 };
 
-export const hasProject = (project: string) => {
-  if (localStorage.getItem(getProjectStorageKey(project))) {
-    return true;
+export const hasProject = async (project: string) => {
+  try {
+    if (await projectStorage.getItem(getProjectStorageKey(project))) {
+      return true;
+    }
+  } catch {
+    return false;
   }
-  return false;
 };
 
-export const getProjectList = () => {
-  return Object.keys(localStorage)
+export const getProjectList = async () => {
+  const keys = await projectStorage.keys();
+  return keys
     .filter(key => key.endsWith('.' + storageKey))
     .map(key => key.substr(0, key.indexOf('.')));
 };
 
-export const removeProject = (project: string) => {
-  localStorage.removeItem(getProjectStorageKey(project));
+export const removeProject = async (project: string) => {
+  await projectStorage.removeItem(getProjectStorageKey(project));
 };
 
-export const saveToLocalStorage = (storage: XStorage) => {
-  localStorage.setItem(
+export const saveToLocalStorage = async (storage: XStorage) => {
+  await projectStorage.setItem(
     getProjectStorageKey(storage.project),
-    JSON.stringify(storage)
+    json(storage)
   );
 };
 
-export const loadFromLocalStorage = (project: string): XStorage => {
-  const data = JSON.parse(
-    localStorage.getItem(getProjectStorageKey(project))
-  ) as XStorage;
-  return data;
+export const loadFromLocalStorage = (project: string): Promise<XStorage> => {
+  return projectStorage.getItem(getProjectStorageKey(project));
 };

@@ -1,5 +1,4 @@
 import { XStorage, Directory, XFile } from './state';
-import { files } from './defaultFiles';
 
 // FRom https://gist.github.com/jed/982883
 export const generateNodeId = () => {

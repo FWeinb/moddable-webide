@@ -8,7 +8,7 @@ export const onInitialize: OnInitialize = async ({
   actions.Compiler.load();
   const urlParams = new URLSearchParams(window.location.search);
   const projectName = urlParams.get('project');
-  if (effects.Storage.hasProject(projectName)) {
+  if (await effects.Storage.hasProject(projectName)) {
     actions.Storage.openProject(projectName);
   }
 };

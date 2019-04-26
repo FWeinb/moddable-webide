@@ -2,7 +2,7 @@
 import { jsx, css } from '@emotion/core';
 
 import React from 'react';
-import FileTree from '../FileTree';
+import FileTree from '../FileTree/index';
 
 const FileExplorer: React.FunctionComponent = () => {
   return (
@@ -10,6 +10,7 @@ const FileExplorer: React.FunctionComponent = () => {
       role="complementary"
       css={{
         display: 'flex',
+        overflow: 'hidden',
         flexDirection: 'column',
         background: 'var(--color-dark)',
         height: '100%',

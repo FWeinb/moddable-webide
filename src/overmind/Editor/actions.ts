@@ -48,7 +48,7 @@ export const closeFile: Action<string> = (
   { state, actions, effects },
   fileId
 ) => {
-  if (state.Editor.activeFile.id === fileId) {
+  if (state.Editor.activeFile && state.Editor.activeFile.id === fileId) {
     state.Editor.activeFile = undefined;
   }
 

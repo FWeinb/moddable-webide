@@ -19,7 +19,6 @@ import { EditorFile } from '../../overmind/Editor/state';
 import { isFilePartOf } from '../../overmind/Storage/utils';
 
 import { NewFileButton, NewFolderButton, DeleteButton } from './Buttons';
-import { askRemoveProject } from '../../overmind/actions';
 
 const useFocus = (domReference: React.RefObject<HTMLElement>) => {
   const [focused, setFocused] = useState(false);
@@ -115,8 +114,19 @@ const DirItem: React.FC<DirItemProp> = ({
         color: 'var(--color-text-muted)'
       }}
     >
-      <FolderIcon open={open} />
-      <span css={{ paddingLeft: '0.5em' }}>{dir.name}</span>
+      <span>
+        <FolderIcon open={open} />
+      </span>
+      <span
+        css={{
+          paddingLeft: '0.5em',
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis'
+        }}
+      >
+        {dir.name}
+      </span>
       <section
         css={{
           display: 'flex',
@@ -161,7 +171,16 @@ const FileItem: React.FunctionComponent<FileItemProp> = ({ file, hover }) => {
       <span>
         <JsFileIcon />
       </span>
-      <span css={{ paddingLeft: '0.5em' }}>{file.name}</span>
+      <span
+        css={{
+          paddingLeft: '0.5em',
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis'
+        }}
+      >
+        {file.name}
+      </span>
       <section
         css={{ marginLeft: 'auto', fontWeight: 'bold' }}
         style={{ visibility: hover ? 'visible' : 'hidden' }}
@@ -324,7 +343,7 @@ const FileTree: React.FunctionComponent = () => {
 
   const { getRootProps, isDragActive } = useDropzone({
     onDrop,
-    accept: ['.js', '.json'],
+    accept: ['.js', '.json', '.png', '.gif'],
     noKeyboard: true,
     noDragEventsBubbling: true
   });
@@ -349,7 +368,13 @@ const FileTree: React.FunctionComponent = () => {
           background: 'var(--color-light2)'
         }}
       >
-        <span>{Storage.project ? Storage.project : 'Files'}</span>
+        <span
+          css={{
+            whiteSpace: 'nowrap'
+          }}
+        >
+          {Storage.project ? Storage.project : 'Files'}
+        </span>
         <section
           css={{
             display: 'flex',

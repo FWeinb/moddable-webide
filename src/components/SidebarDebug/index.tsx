@@ -123,6 +123,7 @@ const SidebarDebug: React.FunctionComponent = () => {
       role="complementary"
       css={{
         display: 'flex',
+        overflow: 'hidden',
         flexDirection: 'column',
         background: 'var(--color-dark)',
         height: '100%',

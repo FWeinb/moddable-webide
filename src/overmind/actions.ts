@@ -4,7 +4,7 @@ import { SidebarView } from './rootState';
 export const askNewProject: Action = async ({ actions, effects }) => {
   const projectName = window.prompt('Input Project Name:', 'NewProject');
   if (projectName) {
-    if (effects.Storage.hasProject(projectName)) {
+    if (await effects.Storage.hasProject(projectName)) {
       const confirmed = window.confirm(
         `There is a project with name "${projectName}". Do you want to overwrite it?`
       );
@@ -15,6 +15,8 @@ export const askNewProject: Action = async ({ actions, effects }) => {
     actions.Editor.saveAllFiles();
     actions.Storage.openProject(projectName);
 
+    // TODO: Don't use sample data here...
+    // Just have a mod.js file instead
     await actions.Storage.loadSampleData(
       `// This is your new project "${projectName}"`
     );

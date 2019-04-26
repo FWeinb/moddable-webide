@@ -39,14 +39,23 @@ export const mergeFilesIntoFiles: Operator<XFile[]> = mutate(
   }
 );
 
-export const persist: Operator = run(({ state, effects }) => {
-  effects.Storage.saveToLocalStorage(state.Storage);
+export const persist: Operator = run(async ({ state, effects }) => {
+  await effects.Storage.saveToLocalStorage(state.Storage);
+});
+
+export const openDefaultFile: Operator = run(async ({ state, actions }) => {
+  const modFile = Object.values(state.Storage.files).find(
+    file => file.name === 'mod.js'
+  );
+  if (modFile) {
+    actions.Editor.openFile(modFile.id);
+  }
 });
 
 export const loadLocal: Operator<string, XStorage> = map(
-  ({ effects }, projectName) => {
+  async ({ effects }, projectName) => {
     return (
-      effects.Storage.loadFromLocalStorage(projectName) || {
+      (await effects.Storage.loadFromLocalStorage(projectName)) || {
         project: null,
         directories: {},
         files: {}
@@ -66,11 +75,23 @@ export const readDroppedFiles: Operator<File[], XFile[]> = map(
   async (_, files) => {
     // TODO: Handle creation of directories here
     return await Promise.all(
-      files.map(async file => ({
-        id: generateNodeId(),
-        name: file.name,
-        content: await readFile(file)
-      }))
+      files.map(async file => {
+        if (file.type.startsWith('text')) {
+          return {
+            id: generateNodeId(),
+            name: file.name,
+            binary: false,
+            content: await readFile(file)
+          };
+        } else {
+          return {
+            id: generateNodeId(),
+            name: file.name,
+            binary: true,
+            content: await readBinaryFile(file)
+          };
+        }
+      })
     );
   }
 );
@@ -81,5 +102,14 @@ const readFile = (file: File): Promise<string> => {
     reader.onload = e => resolve(String(reader.result));
     reader.onerror = reject;
     reader.readAsText(file);
+  });
+};
+
+const readBinaryFile = (file: File): Promise<ArrayBuffer> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = e => resolve(reader.result as ArrayBuffer);
+    reader.onerror = reject;
+    reader.readAsArrayBuffer(file);
   });
 };

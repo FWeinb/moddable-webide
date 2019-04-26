@@ -1,6 +1,6 @@
 /** @jsx jsx */
 import { jsx } from '@emotion/core';
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useOvermind } from '../../overmind';
 
 import WebIDELogo from '../Icons/WebIDELogo';
@@ -40,7 +40,19 @@ const WelcomeScreen: React.FunctionComponent = () => {
     }
   } = useOvermind();
 
-  const projects = getProjectList().filter(name => name !== currentProject);
+  const [projects, setProjects] = React.useState<string[]>();
+  useEffect(() => {
+    let unmounted = false;
+    getProjectList().then(newProjects => {
+      const projects = newProjects.filter(name => name !== currentProject);
+      if (!unmounted) {
+        setProjects(projects);
+      }
+    });
+    return () => {
+      unmounted = true;
+    };
+  }, [currentProject]);
 
   return (
     <div
@@ -65,7 +77,7 @@ const WelcomeScreen: React.FunctionComponent = () => {
           textAlign: 'center'
         }}
       >
-        {projects.length > 0 && (
+        {projects && projects.length > 0 && (
           <section css={{ marginRight: '.5em' }}>
             <header>Open Project:</header>
             <section css={{ display: 'flex', flexDirection: 'column' }}>

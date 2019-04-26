@@ -55,6 +55,7 @@
   },
   "dependencies": {
     "body-scroll-lock": "^2.6.1",
+    "localforage": "^1.7.3",
     "monaco-editor": "^0.16.2",
     "overmind": "^17.1.0",
     "overmind-react": "^18.1.0",
