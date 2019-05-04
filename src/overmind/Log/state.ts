@@ -1,5 +1,3 @@
-import XsbugConnection from '../../xs/XsbugConnection';
-
 export enum LogType {
   INFO,
   WARNING,

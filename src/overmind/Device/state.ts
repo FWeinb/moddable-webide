@@ -1,4 +1,4 @@
-import XsbugConnection from '../../xs/XsbugConnection';
+import DeviceConnection from '../../xs/DeviceConnection';
 
 export type DeviceInstrument = {
   name: string;
@@ -6,30 +6,38 @@ export type DeviceInstrument = {
   indices: string[];
 };
 
-export enum DebugState {
+export enum ConnectionState {
   DISCONNECTED,
   CONNECTING,
   CONNECTED,
   ERROR
 }
 
-export type DebugConnection = {
+export enum DebugState {
+  CONNECTED,
+  CONNECTING,
+  DISCONNECTED
+}
+
+export type Debug = {
   state: DebugState;
-  connection: XsbugConnection;
   instruments: DeviceInstrument[];
   samples: number[][];
 };
 
 export type Device = {
   host: string;
-  debug: DebugConnection;
+  connectionState: ConnectionState;
+  connection: DeviceConnection;
+  debug: Debug;
 };
 
 const state: Device = {
   host: 'runmod.local',
+  connectionState: ConnectionState.DISCONNECTED,
+  connection: null,
   debug: {
     state: DebugState.DISCONNECTED,
-    connection: null,
     instruments: null,
     samples: null
   }

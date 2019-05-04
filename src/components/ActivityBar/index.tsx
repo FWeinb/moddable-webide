@@ -43,9 +43,6 @@ const DebugButton: React.FC = () => {
     case DebugState.CONNECTING:
       debugIndicatorColor = '#037acc';
       break;
-    case DebugState.ERROR:
-      debugIndicatorColor = 'red';
-      break;
   }
 
   return (

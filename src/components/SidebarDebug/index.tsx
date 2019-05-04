@@ -3,7 +3,7 @@ import { jsx } from '@emotion/core';
 
 import React from 'react';
 import { useOvermind } from '../../overmind';
-import { DebugState, DeviceInstrument } from '../../overmind/Device/state';
+import { ConnectionState, DeviceInstrument } from '../../overmind/Device/state';
 import Button from '../Button';
 import BarGraph from './BarGraph';
 
@@ -109,9 +109,7 @@ const InstrumentationView: React.FC = () => {
 const SidebarDebug: React.FunctionComponent = () => {
   const {
     state: {
-      Device: {
-        debug: { state }
-      }
+      Device: { connectionState }
     },
     actions: {
       Device: { debugBreak, debugContinue }
@@ -143,7 +141,7 @@ const SidebarDebug: React.FunctionComponent = () => {
       >
         Debug
       </header>
-      {state === DebugState.CONNECTED ? (
+      {connectionState === ConnectionState.CONNECTED ? (
         <React.Fragment>
           <div>
             <Button

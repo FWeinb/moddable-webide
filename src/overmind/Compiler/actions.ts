@@ -16,29 +16,13 @@ export const load: Action = async ({ state, actions, effects }) => {
 export const compileAndUpload: Action = async ({ state, effects, actions }) => {
   await actions.Editor.saveAllFiles();
 
-  actions.Device.disconnectDebugger();
-
   try {
     const file: Uint8Array = await effects.Compiler.compile(
       json(state.Storage)
     );
-
-    actions.Log.addMessage('Uploading...');
-
-    // Enable debugging
-    await fetch(`http://${state.Device.host}/mod/config/when/debug`);
-
-    const response = await fetch(`http://${state.Device.host}/mod/install`, {
-      method: 'PUT',
-      body: file
-    });
-
-    const text = await response.text();
-
-    actions.Log.addMessage('Done, Response: ' + text);
-
-    await actions.Device.connectDebugger();
+    await actions.Device.installMod(file);
   } catch (e) {
+    console.log(e);
     let message = e;
     if (e instanceof TypeError) {
       message = 'Could not connect to device.';

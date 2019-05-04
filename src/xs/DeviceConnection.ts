@@ -208,13 +208,48 @@ const XsbugMessageParser = (xml: Document): Array<XsbugMessage> => {
   return messages;
 };
 
-export default class XsbugConnection {
+type ReplyCallback = (id: number, code: number, data: ArrayBuffer) => void;
+type PendingRequest = {
+  id: number;
+  callback: ReplyCallback;
+};
+
+type Deferred<T> = {
+  promise: Promise<T>;
+  resolve: (value?: T | PromiseLike<T>) => void;
+  reject: (value?: any) => void;
+};
+
+function createDeferred<T>(): Deferred<T> {
+  return (() => {
+    let resolve: (value?: T | PromiseLike<T>) => void;
+    let reject: (value?: any) => void;
+
+    let p = new Promise<T>((res, rej) => {
+      resolve = res;
+      reject = rej;
+    });
+
+    return {
+      promise: p,
+      reject,
+      resolve
+    };
+  })();
+}
+
+export default class DeviceConnection {
   private connectTimer: NodeJS.Timeout;
   private connectionAttempt: number;
 
   private uri: string;
   private socket: WebSocket;
   private parser: DOMParser;
+
+  private requestID: number;
+  private pending: PendingRequest[];
+
+  private deferredConnection: Deferred<DeviceConnection>;
 
   constructor(uri: string) {
     this.uri = uri;
@@ -223,22 +258,23 @@ export default class XsbugConnection {
   }
 
   public connect() {
+    this.disconnect();
     this.initSocket();
+    this.deferredConnection = createDeferred();
+    return this.deferredConnection.promise;
   }
 
   public disconnect() {
     clearTimeout(this.connectTimer);
     if (this.socket) {
-      this.socket.onopen = undefined;
-      this.socket.onclose = undefined;
-      this.socket.onerror = undefined;
-      this.socket.onmessage = undefined;
-      //this.socket.close();
+      this.socket.close();
     }
   }
 
   private initSocket() {
+    this.requestID = 1;
     this.socket = new WebSocket(this.uri, ['x-xsbug']);
+    this.socket.binaryType = 'arraybuffer';
     this.socket.onopen = this._onOpen.bind(this);
     this.socket.onclose = this._onClose.bind(this);
     this.socket.onerror = this._onError.bind(this);
@@ -249,6 +285,8 @@ export default class XsbugConnection {
   private _onOpen(ev: Event) {
     clearTimeout(this.connectTimer);
     this.onOpen(ev);
+    this.deferredConnection.resolve(this);
+    this.deferredConnection = null;
   }
 
   private _onError(err: Event) {
@@ -259,6 +297,8 @@ export default class XsbugConnection {
         }, 1000);
       } else {
         this.onConnectionError();
+        this.deferredConnection.reject(err);
+        this.deferredConnection = null;
       }
     } else {
       this.onError(err);
@@ -266,55 +306,71 @@ export default class XsbugConnection {
   }
 
   private _onClose(ev: CloseEvent) {
-    if (this.socket.readyState === 3) {
-    } else {
-      this.onClose(ev);
-    }
+    this.onClose(ev);
   }
 
   private _onMessage(event: MessageEvent) {
-    const msg = XsbugMessageParser(
-      this.parser.parseFromString(event.data, 'application/xml')
-    );
-    msg.forEach(message => {
-      switch (message.type) {
-        case XsbugMessageType.Login:
-          this.onLogin(message as XsbugLoginMessage);
-          break;
-        case XsbugMessageType.Log:
-          this.onLog(message as XsbugLogMessage);
-          break;
-        case XsbugMessageType.Break:
-          this.onBreak(message as XsbugBreakMessage);
-          break;
-        case XsbugMessageType.Local:
-          this.onLocal(message as XsbugLocalMessage);
-          break;
-        case XsbugMessageType.Instrument:
-          this.onInstrumentationConfigure(message as XsbugInstrumentMessage);
-          break;
-        case XsbugMessageType.InstrumentSample:
-          this.onInstrumentationSamples(
-            message as XsbugInstrumentSampleMessage
-          );
+    if ('string' === typeof event.data) {
+      const msg = XsbugMessageParser(
+        this.parser.parseFromString(event.data, 'application/xml')
+      );
+      msg.forEach(message => {
+        switch (message.type) {
+          case XsbugMessageType.Login:
+            this.onLogin(message as XsbugLoginMessage);
+            break;
+          case XsbugMessageType.Log:
+            this.onLog(message as XsbugLogMessage);
+            break;
+          case XsbugMessageType.Break:
+            this.onBreak(message as XsbugBreakMessage);
+            break;
+          case XsbugMessageType.Local:
+            this.onLocal(message as XsbugLocalMessage);
+            break;
+          case XsbugMessageType.Instrument:
+            this.onInstrumentationConfigure(message as XsbugInstrumentMessage);
+            break;
+          case XsbugMessageType.InstrumentSample:
+            this.onInstrumentationSamples(
+              message as XsbugInstrumentSampleMessage
+            );
+            break;
+          default:
+            break;
+        }
+      });
+    } else {
+      const data = new DataView(event.data);
+      switch (data.getUint8(0)) {
+        case 5:
+          const id = data.getUint16(1),
+            code = data.getInt16(3);
+          const index = this.pending.findIndex(pending => id === pending.id);
+          if (index >= 0) {
+            const pending = this.pending[index];
+            this.pending.splice(index, 1);
+            pending.callback(id, code, event.data.slice(5));
+          }
           break;
         default:
+          debugger;
           break;
       }
-    });
+    }
   }
 
+  // WebSocket Events
   onClose(ev: CloseEvent) {}
   onOpen(ev: Event) {}
   onError(ev: Event) {}
-
   onConnectionError() {}
 
   send(data) {
     return this.socket.send(data);
   }
 
-  // Actions
+  // Debugging actions
   doClearBreakpoint(path, line) {
     this.sendCommand(`<clear-breakpoint path="${path}" line="${line}"/>`);
   }
@@ -351,7 +407,7 @@ export default class XsbugConnection {
     this.sendCommand(`<toggle id="${value}"/>`);
   }
 
-  // Events
+  // Debug Events
   onBreak(msg: XsbugBreakMessage) {}
   onLogin(msg: XsbugLoginMessage) {}
   onInstrumentationConfigure(msg: XsbugInstrumentMessage) {}
@@ -359,8 +415,75 @@ export default class XsbugConnection {
   onLocal(msg: XsbugLocalMessage) {}
   onLog(msg: XsbugLogMessage) {}
 
+  // Host actions
+  doGetPreference(domain, key, callback) {
+    const byteLength = domain.length + 1 + key.length + 1;
+    const payload = new Uint8Array(byteLength);
+    let j = 0;
+    for (let i = 0; i < domain.length; i++) payload[j++] = domain.charCodeAt(i);
+    j++;
+    for (let i = 0; i < key.length; i++) payload[j++] = key.charCodeAt(i);
+
+    this.sendBinaryCommand(6, payload, callback);
+  }
+  doInstall(offset: number, data: Uint8Array) {
+    const max = 512;
+    for (let i = 0; i < data.byteLength; i += max, offset += max) {
+      const use = Math.min(max, data.byteLength - i);
+      const payload = new Uint8Array(4 + use);
+      payload[0] = (offset >> 24) & 0xff;
+      payload[1] = (offset >> 16) & 0xff;
+      payload[2] = (offset >> 8) & 0xff;
+      payload[3] = offset & 0xff;
+      payload.set(data.subarray(i, i + use), 4);
+
+      this.sendBinaryCommand(3, payload);
+    }
+  }
+  doRestart() {
+    this.sendBinaryCommand(1);
+  }
+  doSetPreference(domain: String, key: String, value: String) {
+    // assumes 7 bit ASCII values
+    const byteLength = domain.length + 1 + key.length + 1 + value.length + 1;
+    const payload = new Uint8Array(byteLength);
+    let j = 0;
+    for (let i = 0; i < domain.length; i++) payload[j++] = domain.charCodeAt(i);
+    j++;
+    for (let i = 0; i < key.length; i++) payload[j++] = key.charCodeAt(i);
+    j++;
+    for (let i = 0; i < value.length; i++) payload[j++] = value.charCodeAt(i);
+
+    this.sendBinaryCommand(4, payload);
+  }
+  doUninstall(callback: ReplyCallback) {
+    this.sendBinaryCommand(2, undefined, callback);
+  }
+
   // Helper
-  sendCommand(msg) {
+  sendCommand(msg: String) {
     this.send(crlf + msg + crlf);
+  }
+
+  sendBinaryCommand(
+    command: number,
+    payload: Uint8Array | ArrayBuffer = undefined,
+    callback: ReplyCallback = undefined
+  ) {
+    if (payload) {
+      if (!(payload instanceof ArrayBuffer)) payload = payload.buffer;
+    }
+    let needed = 1;
+    if (payload) needed += 2 + payload.byteLength;
+    else if (callback) needed += 2;
+    const msg = new Uint8Array(needed);
+    msg[0] = command;
+    if (callback) {
+      msg[1] = this.requestID >> 8;
+      msg[2] = this.requestID & 0xff;
+      this.pending.push({ callback, id: this.requestID++ });
+    }
+    if (payload) msg.set(new Uint8Array(payload), 3);
+    this.send(msg.buffer);
   }
 }

@@ -1,5 +1,5 @@
-import XsbugConnection from '../../xs/XsbugConnection';
+import DeviceConnection from '../../xs/DeviceConnection';
 
-export const connectDebugger = (url: string): XsbugConnection => {
-  return new XsbugConnection(url);
+export const connect = (url: string): DeviceConnection => {
+  return new DeviceConnection(url);
 };
