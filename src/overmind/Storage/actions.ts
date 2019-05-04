@@ -14,9 +14,11 @@ export const openProject: Action<string> = pipe(
     );
 
     // Update url
-    var newurl =
-      location.origin + location.pathname + '?project=' + projectName;
-    window.history.pushState(null, '', newurl);
+    if (projectName) {
+      var newurl =
+        location.origin + location.pathname + '?project=' + projectName;
+      window.history.pushState(null, '', newurl);
+    }
   }),
   o.openDefaultFile
 );
