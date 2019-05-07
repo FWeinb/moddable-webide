@@ -39,16 +39,21 @@ const Editor: React.FC = () => {
   const editor = useRef<monaco.editor.IStandaloneCodeEditor>(null);
 
   const runEslint = model => {
-    eslint
-      .verify(model.getValue(), {
-        parserOptions: {
-          ecmaVersion: 6,
-          sourceType: 'module'
-        }
-      })
-      .then(markers => {
-        monaco.editor.setModelMarkers(model, 'eslint', markers);
-      });
+    if (
+      Storage.files[activeFile.id] &&
+      Storage.files[activeFile.id].name.endsWith('.js')
+    ) {
+      eslint
+        .verify(model.getValue(), {
+          parserOptions: {
+            ecmaVersion: 6,
+            sourceType: 'module'
+          }
+        })
+        .then(markers => {
+          monaco.editor.setModelMarkers(model, 'eslint', markers);
+        });
+    }
   };
 
   // Create Editor
@@ -92,12 +97,10 @@ const Editor: React.FC = () => {
   // Open Files
   useEffect(() => {
     if (activeFile && editor.current) {
-      const { id } = Storage.files[activeFile.id];
-
       const model = getModel(Storage, Storage.files[activeFile.id]);
       editor.current.setModel(model);
 
-      const state = editorStats.current[id];
+      const state = editorStats.current[activeFile.id];
       // is loaded and content may have changed
       if (state) {
         const { viewState } = state;
@@ -105,6 +108,7 @@ const Editor: React.FC = () => {
       } else {
         // Register change listener
         model.onDidChangeContent(() => {
+          const { id, name } = Storage.files[activeFile.id];
           updateEditorFile({
             id: activeFile.id,
             dirty:
@@ -113,16 +117,19 @@ const Editor: React.FC = () => {
           });
           runEslint(model);
         });
-        editorStats.current[id] = {
+        editorStats.current[activeFile.id] = {
           version: model.getAlternativeVersionId()
         };
         editor.current.setModel(model);
       }
+
       runEslint(model);
 
       // Save the editor state before unloading
       return () => {
-        editorStats.current[id].viewState = editor.current.saveViewState();
+        editorStats.current[
+          activeFile.id
+        ].viewState = editor.current.saveViewState();
       };
     } else if (activeFile === undefined) {
       editor.current.setModel(null);

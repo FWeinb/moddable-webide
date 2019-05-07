@@ -2,6 +2,14 @@ import monaco from '../../components/Editor/monaco';
 import { XFile, XStorage } from '../Storage/state';
 import { getPath, getIdByPath } from '../Storage/utils';
 
+const getLanguage = (name: string) => {
+  if (name.endsWith('.js')) {
+    return 'javascript';
+  } else if (name.endsWith('.json')) {
+    return 'json';
+  }
+};
+
 export const getModel = (
   storage: XStorage,
   file: XFile
@@ -16,7 +24,7 @@ export const getModel = (
 
   model = monaco.editor.createModel(
     file.content,
-    'javascript',
+    getLanguage(file.name),
     monaco.Uri.parse('mem:///' + path)
   );
   return model;

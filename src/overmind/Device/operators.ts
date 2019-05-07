@@ -55,7 +55,14 @@ export const addDebugger: Operator = mutate(({ state, actions }) => {
   };
 
   connection.onBreak = async info => {
-    const { path, line, message } = info;
+    let { path, line, message } = info;
+
+    // HINT: The path will have the `/mc` prefix
+    // because this is where it is compiled
+    // remove it here `/mc`
+    if (path && path.startsWith('/mc')) {
+      path = path.substr(3);
+    }
 
     actions.Log.addErrorMessage(`Break ${path}:${line}: ${message}`);
 

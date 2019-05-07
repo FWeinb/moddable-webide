@@ -5,12 +5,10 @@ export enum CompilerState {
 }
 export type Compiler = {
   state: CompilerState;
-  errors: string[];
 };
 
 const state: Compiler = {
-  state: CompilerState.LOADING,
-  errors: undefined
+  state: CompilerState.LOADING
 };
 
 export default state;

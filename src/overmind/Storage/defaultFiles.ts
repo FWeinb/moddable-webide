@@ -3,16 +3,12 @@ import { XStorage } from './state';
 export const createSampleFiles = (
   banner: string
 ): Omit<XStorage, 'project'> => ({
-  directories: {
-    '0': {
-      id: '0',
-      name: 'src'
-    }
-  },
+  directories: {},
   files: {
     '1': {
       id: '1',
       name: 'ping.js',
+      binary: false,
       content: `
 import {Socket} from "socket";
 import Net from "net";
@@ -121,12 +117,12 @@ class Ping extends Socket {
 Object.freeze(Ping.prototype);
 
 export default Ping;
-`.trim(),
-      parent: '0'
+`.trim()
     },
     '2': {
       id: '2',
       name: 'mod.js',
+      binary: false,
       content: `
 ${banner}
 import Ping from "ping";
@@ -150,6 +146,21 @@ let ping = new Ping({host: HOST, id: ID, interval: INTERVAL}, (message, value, e
       break;
   }
 });
+`.trim()
+    },
+    '3': {
+      id: '3',
+      name: 'manifest.json',
+      binary: false,
+      content: `
+{
+  "modules": {
+    "*": "./*"
+  },
+  "resources":{
+    "*": "./*"
+  }
+}
 `.trim()
     }
   }

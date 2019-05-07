@@ -22,6 +22,7 @@ module.exports = {
   },
   entry: {
     app: './src/index.tsx',
+    'json.worker': 'monaco-editor/esm/vs/language/json/json.worker',
     'editor.worker': 'monaco-editor/esm/vs/editor/editor.worker.js',
     'ts.worker': 'monaco-editor/esm/vs/language/typescript/ts.worker'
   },

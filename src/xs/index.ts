@@ -1,17 +1,17 @@
-import XsclWorker from './xscl.xworker';
+import ToolsWorker from './tools.xworker';
 import { XStorage } from '../overmind/Storage/state';
 
 type MessageType = {
-  type: 'error' | 'log';
+  type: 'error' | 'warning' | 'log';
   text: string;
 };
 
-export default class XSCL {
+export default class Compiler {
   worker: Worker;
   loaded: boolean;
 
   constructor() {
-    this.worker = new XsclWorker();
+    this.worker = new ToolsWorker();
     this.loaded = false;
   }
   addOnloadListener(callback: VoidFunction) {
@@ -25,7 +25,7 @@ export default class XSCL {
       }
     });
   }
-  compile(files: XStorage): Promise<string[]> {
+  compile(files: XStorage): Promise<Uint8Array> {
     return new Promise((resolve, reject) => {
       this.worker.postMessage({
         fn: 'compile',
@@ -45,30 +45,14 @@ export default class XSCL {
     });
   }
 
-  link(files: string[]): Promise<Uint8Array> {
-    return new Promise((resolve, reject) => {
-      this.worker.postMessage({
-        fn: 'link',
-        input: files
-      });
-      this.worker.onmessage = message => {
-        const { data } = message;
-        if (data.type === 'lResponse') {
-          this.worker.onmessage = undefined;
-          if (data.result.status === 'success') {
-            resolve(data.result.data);
-          } else {
-            reject('Linking failed');
-          }
-        }
-      };
-    });
-  }
-
   addMessageListener(callback: (message: MessageType) => void) {
     this.worker.addEventListener('message', message => {
       const { data } = message;
-      if (data.type === 'error' || data.type === 'log') {
+      if (
+        data.type === 'error' ||
+        data.type === 'warning' ||
+        data.type === 'log'
+      ) {
         callback(data);
       }
     });

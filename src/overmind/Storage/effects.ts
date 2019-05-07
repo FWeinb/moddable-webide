@@ -29,7 +29,7 @@ export const getProjectList = async () => {
 };
 
 export const removeProject = async (project: string) => {
-  await projectStorage.removeItem(getProjectStorageKey(project));
+  await projectStorage.removeItem(getProjectStorageKey(project ? project : ''));
 };
 
 export const saveToLocalStorage = async (storage: XStorage) => {
