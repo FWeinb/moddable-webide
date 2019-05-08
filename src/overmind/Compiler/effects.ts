@@ -12,6 +12,6 @@ export const load = (): Promise<XSCL> => {
   });
 };
 
-export const compile = async (storage: XStorage): Promise<Uint8Array> => {
+export const compile = (storage: XStorage): Promise<Uint8Array> => {
   return xscl.compile(storage);
 };

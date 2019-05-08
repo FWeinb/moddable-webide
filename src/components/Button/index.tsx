@@ -15,6 +15,9 @@ const Button: React.FC<ButtonProps> = props => {
         outline: 'none',
         WebkitAppearance: 'button'
       }}
+      style={{
+        opacity: props.disabled ? 0.5 : 1
+      }}
     >
       {props.children}
     </button>

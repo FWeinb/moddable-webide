@@ -38,7 +38,7 @@ export default class Compiler {
           if (data.result.status === 'success') {
             resolve(data.result.data);
           } else {
-            reject('Compiling failed');
+            reject(data.result.error);
           }
         }
       };
