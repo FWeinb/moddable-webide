@@ -31,5 +31,5 @@ Afterwards you can find the build in `$MODDABLE/build/bin/wasm/release` copy the
 ![WebIDE](https://github.com/FWeinb/moddable-webide/blob/master/_github/WebIDE.gif?raw=true)
 
 #### Videos
-Running code on a Moddable Zero - [https://vimeo.com/334983445](https://vimeo.com/334983445)
-Using the integrated debugger - [https://vimeo.com/335362440](https://vimeo.com/335362440)
+* Running code on a Moddable Zero - [https://vimeo.com/334983445](https://vimeo.com/334983445)
+* Using the integrated debugger - [https://vimeo.com/335362440](https://vimeo.com/335362440)
