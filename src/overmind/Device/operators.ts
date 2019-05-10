@@ -1,44 +1,60 @@
-import { run, mutate, Operator, pipe, when, noop } from 'overmind';
+import { wait, run, mutate, Operator, pipe, when, noop } from 'overmind';
 import { ConnectionState, DebugState } from './state';
 import { cleanInstrumentData } from './utils';
 import { SidebarView } from '../rootState';
 import { getIdByPath } from '../Storage/utils';
+import {
+  DeviceDebugger,
+  XsbugMessageType,
+  DeviceControl,
+  DeviceConnection
+} from '../../xs/DeviceConnection';
 
-export const createConnection: Operator<any> = mutate(({ state, effects }) => {
-  const connection = effects.Device.connect(`ws://${state.Device.host}:8080`);
+export const disconnectIfConnected: Operator = pipe(
+  mutate(({ state }) => {
+    if (state.Device.connection !== null) {
+      state.Device.connectionState = ConnectionState.DISCONNECTED;
+      state.Device.connection.close();
+      state.Device.connection = null;
+    }
+  })
+);
 
-  connection.onConnectionError = () => {
-    state.Device.connectionState = ConnectionState.ERROR;
-  };
-
-  connection.onClose = () => {
-    state.Device.connectionState = ConnectionState.DISCONNECTED;
-  };
-
-  connection.onOpen = () => {
-    state.Device.connectionState = ConnectionState.CONNECTED;
-  };
-
+export const createConnection: Operator = mutate(({ state, effects }) => {
+  state.Device.debug.state = DebugState.DISCONNECTED;
   state.Device.connectionState = ConnectionState.CONNECTING;
-  state.Device.connection = connection;
+  state.Device.connection = new DeviceConnection(
+    `ws://${state.Device.host}:8080`
+  );
 });
 
-export const ensureConnected: Operator<any> = mutate(async ({ state }) => {
-  if (state.Device.connectionState !== ConnectionState.CONNECTED) {
+export const connect: Operator = mutate(async ({ state }) => {
+  try {
     await state.Device.connection.connect();
+    state.Device.connectionState = ConnectionState.CONNECTED;
+  } catch (e) {
+    state.Device.connectionState = ConnectionState.ERROR;
+    throw e;
   }
 });
 
-export const addDebugger: Operator = mutate(({ state, actions }) => {
-  const connection = state.Device.connection;
-  connection.onInstrumentationConfigure = config => {
-    state.Device.debug.instruments = cleanInstrumentData(config.instruments);
-  };
-  connection.onInstrumentationSamples = config => {
+export const createDebugger: Operator = mutate(({ state, actions }) => {
+  const deviceDebugger = new DeviceDebugger(state.Device.connection);
+
+  deviceDebugger.on(XsbugMessageType.Login, msg => {
+    state.Device.debug.state = DebugState.CONNECTED;
+    actions.Log.addMessage('Debugger connected');
+    deviceDebugger.doGo();
+  });
+
+  deviceDebugger.on(XsbugMessageType.Instrument, msg => {
+    state.Device.debug.instruments = cleanInstrumentData(msg.instruments);
+  });
+  deviceDebugger.on(XsbugMessageType.InstrumentSample, msg => {
     if (!state.Device.debug.samples) {
-      state.Device.debug.samples = config.samples.map(sample => [sample]);
+      state.Device.debug.samples = msg.samples.map(sample => [sample]);
     } else {
-      config.samples.forEach((sample, index) => {
+      msg.samples.forEach((sample, index) => {
         state.Device.debug.samples[index].push(sample);
         state.Device.debug.samples[index].splice(
           0,
@@ -46,16 +62,21 @@ export const addDebugger: Operator = mutate(({ state, actions }) => {
         );
       });
     }
-  };
-
-  connection.onLogin = () => {
-    state.Device.debug.state = DebugState.CONNECTED;
-    actions.Log.addMessage('...done');
-    connection.doGo();
-  };
-
-  connection.onBreak = async info => {
-    let { path, line, message } = info;
+  });
+  deviceDebugger.on(XsbugMessageType.Frames, msg => {
+    state.Device.debug.frames.calls = msg.frames;
+  });
+  deviceDebugger.on(XsbugMessageType.Local, msg => {
+    state.Device.debug.frames.local = msg;
+  });
+  deviceDebugger.on(XsbugMessageType.Global, msg => {
+    state.Device.debug.frames.global = msg;
+  });
+  deviceDebugger.on(XsbugMessageType.Grammer, msg => {
+    state.Device.debug.frames.grammer = msg;
+  });
+  deviceDebugger.on(XsbugMessageType.Break, msg => {
+    let { path, line, message } = msg;
 
     // HINT: The path will have the `/mc` prefix
     // because this is where it is compiled
@@ -74,31 +95,48 @@ export const addDebugger: Operator = mutate(({ state, actions }) => {
         message
       });
     }
+
+    state.Device.debug.activeBreak = {
+      path,
+      fileId,
+      line,
+      message
+    };
+
     if (state.selectedSidebarView !== SidebarView.Debug) {
       actions.setActiveSidebarView(SidebarView.Debug);
     }
-  };
-
-  connection.onLog = msg => {
+  });
+  deviceDebugger.on(XsbugMessageType.Log, msg => {
     actions.Log.addMessage(msg.log);
-  };
+  });
 
-  actions.Log.addMessage('Connect debugger...');
-  state.Device.debug.state = DebugState.CONNECTING;
+  state.Device.debug.debugger = deviceDebugger;
 });
 
-export const ensureConnection: Operator<any> = pipe(
-  when(
-    ({ state }) =>
-      state.Device.connectionState !== ConnectionState.CONNECTED &&
-      state.Device.connectionState !== ConnectionState.CONNECTING,
-    {
-      true: pipe(
-        run(() => console.log('K')),
-        createConnection,
-        ensureConnected
-      ),
-      false: ensureConnected
-    }
-  )
+export const createDeviceControll: Operator = mutate(({ state }) => {
+  state.Device.control = new DeviceControl(state.Device.connection);
+});
+
+export const setupConnection: Operator<any> = pipe(
+  createConnection,
+  createDebugger,
+  createDeviceControll
+);
+
+export const checkConnection: Operator<any> = pipe(
+  when(({ state }) => state.Device.connection !== null, {
+    true: connect,
+    false: pipe(
+      setupConnection,
+      connect
+    )
+  })
+);
+export const doRestart: Operator = pipe(
+  mutate(({ state }) => {
+    state.Editor.activeBreakPoint = null;
+    state.Device.debug.activeBreak = null;
+    state.Device.control.doRestart();
+  })
 );

@@ -1,0 +1,90 @@
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica,
+    Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
+  margin: 0;
+  padding: 0;
+  background: var(--color-darkest);
+  overflow: hidden;
+  color: white;
+}
+*::selection {
+  background: transparent;
+}
+
+*::-moz-selection {
+  background: transparent;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  width: 100%;
+
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+:root {
+  --color-lightest: #3b3b3b;
+  --color-light2: #383839;
+  --color-light1: #303030;
+  --color-light: #2d2d2d;
+  --color-dark: #252526;
+  --color-darkest: #1e1e1e;
+
+  --color-accent: #175a89;
+  --color-text: #fff;
+  --color-text-muted: rgba(255, 255, 255, 0.5);
+
+  --color-error: #e51402;
+  --color-warning: #fee226;
+}
+
+/* SplitPane */
+.Pane.horizontal {
+  min-height: 0;
+}
+
+.Resizer {
+  z-index: 1;
+}
+
+.Resizer.horizontal,
+.Resizer.vertical {
+  flex-shrink: 0;
+  position: relative;
+}
+
+.Resizer.horizontal {
+  width: 100%;
+  height: 1px;
+  background: #4a4a4a;
+  cursor: row-resize;
+}
+
+.Resizer.vertical {
+  cursor: col-resize;
+}
+
+.Resizer.vertical::after,
+.Resizer.horizontal::after {
+  content: '';
+  position: absolute;
+}
+
+.Resizer.vertical::after {
+  height: 100%;
+  left: -1px;
+  width: 2px;
+}
+
+.Resizer.horizontal::after {
+  height: 2px;
+  width: 100%;
+}

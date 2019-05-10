@@ -1,10 +1,10 @@
 /** @jsx jsx */
 import { jsx } from '@emotion/core';
 
-import React, { useEffect } from 'react';
-import ReactDOM from 'react-dom';
+import './styles.css';
 
-import { Global, css } from '@emotion/core';
+import React from 'react';
+import ReactDOM from 'react-dom';
 
 import SidebarViewContainer from './components/SidebarViewContainer';
 
@@ -16,103 +16,82 @@ import ActivityBar from './components/ActivityBar';
 
 const App: React.FunctionComponent = () => {
   return (
-    <React.Fragment>
-      <Global
-        styles={css`
-          * {
-            box-sizing: border-box;
-          }
-
-          html,
-          body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
-              Helvetica, Arial, sans-serif, 'Apple Color Emoji',
-              'Segoe UI Emoji', 'Segoe UI Symbol';
-            margin: 0;
-            padding: 0;
-            background: var(--color-darkest);
-            overflow: hidden;
-            color: white;
-          }
-
-          html,
-          body,
-          #root  {
-            height: 100%;
-            width: 100%;
-          }
-
-          :root {
-            --color-lightest: #3b3b3b;
-            --color-light2: #383839;
-            --color-light: #2d2d2d;
-            --color-dark: #252526;
-            --color-darkest: #1e1e1e;
-
-            --color-accent: #175a89;
-            --color-text: #fff;
-            --color-text-muted: rgba(255, 255, 255, 0.5);
-
-            --color-error: #e51402;
-            --color-warning: #fee226;
-          }
-          .scrolling::-webkit-scrollbar {
-            width: 13px;
-            height: 0;
-          }
-
-          .scrolling::-webkit-scrollbar-thumb {
-            background-color: rgba(255, 255, 255, 0.15);
-            outline: none;
-          }
-        `}
-      />
+    <div
+      css={{
+        display: 'grid',
+        gridTemplateColumns: '50px auto',
+        gridTemplateRows: '40px auto',
+        height: '100vh'
+      }}
+    >
       <div
         css={{
-          display: 'grid',
-          gridTemplateColumns: '50px auto',
-          gridTemplateRows: '40px auto',
-          justifyItems: 'stretch',
-          alignItems: 'stretch',
-          height: '100%'
+          gridRow: 1,
+          gridColumn: '1 / 3',
+          background: 'var(--color-lightest)'
         }}
       >
-        <div
-          css={{
-            gridRow: 1,
-            gridColumn: '1 / 3',
-            background: 'var(--color-lightest)'
-          }}
-        >
-          <TopBar />
-        </div>
-        <div
-          css={{
-            position: 'relative',
-            gridRow: 2,
-            gridColumn: 1,
-            height: 'calc(100vh - 40px)'
-          }}
-        >
-          <ActivityBar />
-        </div>
-        <div
-          css={{
-            position: 'relative',
-            gridRow: 2,
-            gridColumn: 2,
-            height: 'calc(100vh - 40px)'
-          }}
-        >
-          <Layout
-            content={<Editor />}
-            sidebar={<SidebarViewContainer />}
-            log={<Log />}
-          />
-        </div>
+        <TopBar />
       </div>
-    </React.Fragment>
+      <div
+        css={{
+          gridRow: 2,
+          gridColumn: 1
+        }}
+      >
+        <ActivityBar />
+      </div>
+      <div
+        css={{
+          gridRow: 2,
+          gridColumn: 2,
+          height: 'calc(100vh - 40px)'
+        }}
+      >
+        <Layout
+          content={<Editor />}
+          sidebar={<SidebarViewContainer />}
+          log={<Log />}
+        />
+      </div>
+    </div>
   );
 };
 
 ReactDOM.render(<App />, document.getElementById('root'));
+/*
+import DebugFrames from './components/SidebarDebug/DebugFrames';
+import DeviceConnection, { XsbugLocalMessage } from './xs/DeviceConnection';
+
+const DebugDemo = () => {
+  const [localFrame, setLocalFrame] = React.useState();
+  const connection = React.useRef<DeviceConnection>();
+  const toggle = React.useCallback(
+    value => connection.current.doToggle(value),
+    [connection]
+  );
+  useEffect(() => {
+    connection.current = new DeviceConnection(`ws://runmod.local:8080`);
+    connection.current.onLogin = () => {
+      console.log('Ready');
+      connection.current.doGo();
+      setTimeout(() => {
+        connection.current.doStep();
+      }, 500);
+    };
+    connection.current.onLocal = value => {
+      console.log(value);
+      setLocalFrame(value);
+    };
+    connection.current.connect();
+  }, []);
+
+  return localFrame ? (
+    <DebugFrames frames={localFrame} toggle={toggle} />
+  ) : (
+    <div />
+  );
+};
+
+ReactDOM.render(<DebugDemo />, document.getElementById('root'));
+*/

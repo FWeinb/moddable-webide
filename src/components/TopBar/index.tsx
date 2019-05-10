@@ -11,17 +11,21 @@ import Button from '../Button';
 
 import { useOvermind } from '../../overmind';
 import { CompilerState } from '../../overmind/Compiler/state';
-import { ConnectionState } from '../../overmind/Device/state';
+import { ConnectionState, DebugState } from '../../overmind/Device/state';
 
 const EditorTopBar: React.FunctionComponent = () => {
   const {
     actions: {
-      Device: { setDeviceHostName },
+      Device: { setDeviceHostName, connectDebugger },
       Compiler: { compileAndUpload },
       askImportGist
     },
     state: {
-      Device: { connectionState, host },
+      Device: {
+        connectionState,
+        debug: { state: debugState },
+        host
+      },
       Compiler: { state }
     }
   } = useOvermind();
@@ -87,6 +91,20 @@ const EditorTopBar: React.FunctionComponent = () => {
           title="Flash"
         >
           <FlashIcon />
+        </Button>
+        <Button
+          disabled={debugState === DebugState.CONNECTED}
+          onClick={() => connectDebugger()}
+          title="Connect Debugger"
+        >
+          <span
+            css={{
+              color: 'white',
+              filter: 'grayscale(100%) brightness(10000%)'
+            }}
+          >
+            🐞
+          </span>
         </Button>
       </div>
     </div>

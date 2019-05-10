@@ -5,8 +5,7 @@ type MessageType = {
   type: 'error' | 'warning' | 'log';
   text: string;
 };
-
-export default class Compiler {
+export class Compiler {
   worker: Worker;
   loaded: boolean;
 

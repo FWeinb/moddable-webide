@@ -190,7 +190,10 @@ const Editor: React.FC = () => {
     <React.Fragment>
       <div
         ref={editorContainer}
-        css={{ width: '100%', height: '100%' }}
+        css={{
+          width: '100%',
+          height: '100%'
+        }}
         style={{ display: activeFile ? 'block' : 'none' }}
       />
       {activeFile === undefined ? <WelcomeScreen /> : null}

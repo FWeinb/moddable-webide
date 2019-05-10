@@ -1,10 +1,12 @@
-import XSCL from '../../xs';
 import { XStorage } from '../Storage/state';
 
-let xscl: XSCL;
+// Dynamic typing of this is needed
+let xscl: import('../../xs').Compiler;
 
-export const load = (): Promise<XSCL> => {
-  xscl = new XSCL();
+export const load = async (): Promise<typeof xscl> => {
+  xscl = new (await import(
+    /* webpackChunkName: "xsTools" */ '../../xs'
+  )).Compiler();
   return new Promise((resolve, reject) => {
     xscl.addOnloadListener(() => {
       resolve(xscl);

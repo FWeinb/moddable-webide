@@ -13,8 +13,11 @@ import { useDropzone } from 'react-dropzone';
 import { useOvermind } from '../../overmind';
 import { XFile, Directory, XStorage } from '../../overmind/Storage/state';
 
-import FolderIcon from '../Icons/FolderIcon';
-import JsFileIcon from '../Icons/JsFileIcon';
+import {
+  FolderIcon,
+  DefaultFileIcon,
+  JsFileIcon
+} from '../Icons/FileTreeIcons';
 import { EditorFile } from '../../overmind/Editor/state';
 import { isFilePartOf } from '../../overmind/Storage/utils';
 
@@ -148,12 +151,25 @@ const DirItem: React.FC<DirItemProp> = ({
   );
 };
 
+const FileIcon: React.FC<{ filename: string }> = ({ filename }) => {
+  const last = filename.lastIndexOf('.');
+  if (last === -1) {
+    return <DefaultFileIcon />;
+  }
+  const ext = filename.substr(last + 1);
+  switch (ext) {
+    case 'js':
+      return <JsFileIcon />;
+    default:
+  }
+  return <DefaultFileIcon />;
+};
 type FileItemProp = {
   file: XFile;
   hover: boolean;
 };
 
-const FileItem: React.FunctionComponent<FileItemProp> = ({ file, hover }) => {
+const FileItem: React.FC<FileItemProp> = ({ file, hover }) => {
   const {
     actions: {
       Editor: { openFile },
@@ -169,7 +185,7 @@ const FileItem: React.FunctionComponent<FileItemProp> = ({ file, hover }) => {
       }}
     >
       <span>
-        <JsFileIcon />
+        <FileIcon filename={file.name} />
       </span>
       <span
         css={{

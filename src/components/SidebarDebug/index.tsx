@@ -2,171 +2,115 @@
 import { jsx } from '@emotion/core';
 
 import React from 'react';
+
 import { useOvermind } from '../../overmind';
 import { ConnectionState, DeviceInstrument } from '../../overmind/Device/state';
-import Button from '../Button';
-import BarGraph from './BarGraph';
 
-const AskToConnect: React.FC = () => {
-  return <div>Currently Not Connected</div>;
-};
+import SidebarView from '../SidebarView';
+import DebugActionsBar from './DebugActionsBar';
 
-function zip(a: any[], b: any[]) {
-  var arr = [];
-  for (var key in a) arr.push([a[key], b[key]]);
-  return arr;
+import DebugPropertiesPanel from './DebugPropertiesPanel';
+import InstrumentationPanel from './InstrumentationPanel';
+import SidebarPanel from '../SidebarPanel';
+
+function getMessage(connectionState: ConnectionState) {
+  switch (connectionState) {
+    case ConnectionState.CONNECTING:
+      return 'Currently connecting to the device.';
+    case ConnectionState.ERROR:
+      return 'Error connecting to the device, try resetting it';
+  }
 }
-
-type InstrumentsGraphsProps = {
-  instruments: DeviceInstrument[];
-  samples: number[][];
-};
-
-const InstrumentsGraphs: React.FC<InstrumentsGraphsProps> = ({
-  instruments,
-  samples
-}) => {
-  return (
-    <React.Fragment>
-      {instruments.map(({ name, value, indices }) => {
-        const [hoverIndex, setHoverIndex] = React.useState();
-
-        const series = indices.map(index => samples[index]);
-        let pickedValue;
-        if (hoverIndex) {
-          pickedValue = series.map(v => v[hoverIndex]);
-        } else {
-          pickedValue = series.map(last => last[last.length - 1]);
-        }
-
-        return (
-          <div key={name} css={{ marginBottom: '.5em' }}>
-            <header css={{ fontSize: 11 }}>
-              <span>{name}</span>
-              <span css={{ float: 'right' }}>{zip(pickedValue, value)}</span>
-            </header>
-            <BarGraph
-              onHover={setHoverIndex}
-              barWidth={2}
-              height={20}
-              width="100%"
-              series={series[0]}
-            />
-          </div>
-        );
-      })}
-    </React.Fragment>
-  );
-};
-
-const InstrumentationView: React.FC = () => {
-  const {
-    state: {
-      Device: {
-        debug: { instruments, samples }
-      }
-    }
-  } = useOvermind();
-  return (
-    <section
-      css={{
-        display: 'flex',
-        flexDirection: 'column',
-        minHeight: 0
-      }}
-    >
-      <header
-        css={{
-          flexShrink: 0,
-          display: 'flex',
-          alignItems: 'center',
-          position: 'relative',
-          paddingLeft: '1em',
-          textTransform: 'uppercase',
-          fontSize: 11,
-          height: 22,
-          fontWeight: 500,
-          background: 'var(--color-light2)'
-        }}
-      >
-        <span>Instruments</span>
-      </header>
-      <section
-        className={'scrolling'}
-        css={{
-          padding: '5px 11px',
-          overflow: 'auto'
-        }}
-      >
-        {instruments && samples && (
-          <InstrumentsGraphs instruments={instruments} samples={samples} />
-        )}
-      </section>
-    </section>
-  );
-};
 
 const SidebarDebug: React.FunctionComponent = () => {
   const {
     state: {
-      Device: { connectionState }
+      Device: {
+        connectionState,
+        debug: {
+          frames: { calls, local, global, grammer },
+          activeBreak
+        }
+      }
     },
     actions: {
-      Device: { debugBreak, debugContinue }
+      Device: { debugToggleValue, debugSelectFrame }
     }
   } = useOvermind();
 
+  const isActiveBreak = activeBreak !== null;
+
   return (
-    <section
-      role="complementary"
-      css={{
-        display: 'flex',
-        overflow: 'hidden',
-        flexDirection: 'column',
-        background: 'var(--color-dark)',
-        height: '100%',
-        fontSize: '0.9rem'
-      }}
-    >
-      <header
-        css={{
-          display: 'flex',
-          alignItems: 'center',
-          height: 30,
-          fontSize: '0.8em',
-          padding: '0 10px',
-          textTransform: 'uppercase',
-          color: 'var(--color-text-muted)'
-        }}
-      >
-        Debug
-      </header>
+    <SidebarView title={'Debug'}>
       {connectionState === ConnectionState.CONNECTED ? (
         <React.Fragment>
-          <div>
-            <Button
-              css={{ fontSize: '1.5em', color: 'lime' }}
-              onClick={() => {
-                debugContinue();
-              }}
-            >
-              ▶
-            </Button>
-            <Button
-              css={{ fontSize: '1.5em', color: 'gray' }}
-              onClick={() => {
-                debugBreak();
-              }}
-            >
-              ❙❙
-            </Button>
+          <DebugActionsBar />
+
+          <div
+            className="scrolling overlay"
+            css={{
+              display: 'flex',
+              flexDirection: 'column',
+              minHeight: 0,
+              overflow: 'hidden',
+              overflowY: 'auto'
+            }}
+          >
+            <InstrumentationPanel />
+            {isActiveBreak && (
+              <React.Fragment>
+                {/*TODO: MOve this to an element for this*/}
+                <SidebarPanel title={'Calls'} autoOpen={isActiveBreak}>
+                  {calls &&
+                    calls.map((call, i) => (
+                      <div key={i + call.value[0] + call.name}>
+                        <div
+                          css={{
+                            cursor: 'pointer',
+                            ':hover': { background: 'rgba(255,255,255,0.3)' }
+                          }}
+                          onClick={
+                            call.value[0] === '@' &&
+                            (() => debugSelectFrame(call.value))
+                          }
+                        >
+                          {call.name}
+                        </div>
+                      </div>
+                    ))}
+                </SidebarPanel>
+
+                <DebugPropertiesPanel
+                  title={'Local'}
+                  properties={local && local.properties}
+                  toggle={debugToggleValue}
+                  autoOpen={isActiveBreak}
+                />
+
+                <DebugPropertiesPanel
+                  title={'Global'}
+                  properties={global && global.properties}
+                  toggle={debugToggleValue}
+                />
+                <DebugPropertiesPanel
+                  title={'Module'}
+                  properties={grammer && grammer.properties}
+                  toggle={debugToggleValue}
+                />
+              </React.Fragment>
+            )}
           </div>
-          <InstrumentationView />
         </React.Fragment>
       ) : (
-        <AskToConnect />
+        <div
+          css={{
+            textAlign: 'center'
+          }}
+        >
+          {getMessage(connectionState)}
+        </div>
       )}
-    </section>
+    </SidebarView>
   );
 };
 

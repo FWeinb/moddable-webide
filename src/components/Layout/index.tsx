@@ -1,9 +1,7 @@
 /** @jsx jsx */
 import { jsx } from '@emotion/core';
 
-import './styles.css';
-
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import SplitPane from 'react-split-pane';
 
 import { useOvermind } from '../../overmind';
@@ -11,7 +9,7 @@ import { SidebarView } from '../../overmind/rootState';
 
 const createUseLocalState = key => {
   return initialState => {
-    const [state, setState] = useState(() => {
+    const [state, setState] = React.useState(() => {
       try {
         const item = localStorage.getItem(key);
         if (item === null) return initialState;
@@ -20,7 +18,7 @@ const createUseLocalState = key => {
         return initialState;
       }
     });
-    useEffect(() => {
+    React.useEffect(() => {
       localStorage.setItem(key, JSON.stringify(state));
     }, [state]);
 
