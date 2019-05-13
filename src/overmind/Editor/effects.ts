@@ -14,6 +14,8 @@ export const getModel = (
   storage: XStorage,
   file: XFile
 ): monaco.editor.ITextModel => {
+  if (file.binary) return;
+
   const path = getPath(storage, file.id);
   let model = monaco.editor
     .getModels()
@@ -23,7 +25,7 @@ export const getModel = (
   }
 
   model = monaco.editor.createModel(
-    file.content,
+    file.content as string,
     getLanguage(file.name),
     monaco.Uri.parse('mem:///' + path)
   );

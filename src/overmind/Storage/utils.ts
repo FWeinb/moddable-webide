@@ -27,6 +27,11 @@ const getPathFragment = (storage: XStorage, id: string, path: string[]) => {
   return path;
 };
 
+export const getDevicePath = (storage: XStorage, id: string) => {
+  // TODO: Keep in mind this
+  // is becasue we compile everything in the '/mc/' directory.
+  return '/mc/' + getPath(storage, id);
+};
 export const getPath = (storage: XStorage, id: string) => {
   return getPathFragment(storage, id, [])
     .reverse()

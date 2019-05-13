@@ -14,8 +14,7 @@ const ActivityBarButton: React.FC<DimmedButtonProps> = ({
   children,
   ...props
 }) => {
-  const opacity = props.selected ? 1 : props.disabled ? 0.3 : undefined;
-
+  const opacity = props.selected ? 1 : props.disabled ? 0.3 : 0.7;
   return (
     <Button
       css={{

@@ -35,9 +35,29 @@ export const DebugStepIcon: React.FC = () => {
 };
 
 export const DebugStepIntoIcon: React.FC = () => {
-  return <div>TODO</div>;
+  return (
+    <svg
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      stroke="#ffffff"
+      strokeWidth="2"
+    >
+      <path d="M7 13l5 5 5-5M7 6l5 5 5-5" />
+    </svg>
+  );
 };
 
 export const DebugStepOutIcon: React.FC = () => {
-  return <div>TODO</div>;
+  return (
+    <svg
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      stroke="#ffffff"
+      strokeWidth="2"
+    >
+      <path d="M17 11l-5-5-5 5M17 18l-5-5-5 5" />
+    </svg>
+  );
 };

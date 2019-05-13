@@ -82,19 +82,19 @@ const SidebarDebug: React.FunctionComponent = () => {
 
                 <DebugPropertiesPanel
                   title={'Local'}
-                  properties={local && local.properties}
+                  properties={local && local.value.properties}
                   toggle={debugToggleValue}
                   autoOpen={isActiveBreak}
                 />
 
                 <DebugPropertiesPanel
                   title={'Global'}
-                  properties={global && global.properties}
+                  properties={global && global.value.properties}
                   toggle={debugToggleValue}
                 />
                 <DebugPropertiesPanel
                   title={'Module'}
-                  properties={grammer && grammer.properties}
+                  properties={grammer && grammer.value.properties}
                   toggle={debugToggleValue}
                 />
               </React.Fragment>

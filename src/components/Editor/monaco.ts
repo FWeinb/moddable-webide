@@ -2,7 +2,7 @@ import 'monaco-editor/esm/vs/language/json/monaco.contribution';
 import 'monaco-editor/esm/vs/language/typescript/monaco.contribution';
 import 'monaco-editor/esm/vs/basic-languages/javascript/javascript.contribution';
 
-import * as monaco from 'monaco-editor/esm/vs/editor/edcore.main';
+import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
 import { StandaloneCodeEditorServiceImpl } from 'monaco-editor/esm/vs/editor/standalone/browser/standaloneCodeServiceImpl';
 import { SimpleEditorModelResolverService } from 'monaco-editor/esm/vs/editor/standalone/browser/simpleServices';
 import { overmind } from '../../overmind';
@@ -60,4 +60,5 @@ monaco.languages.typescript.javascriptDefaults.addExtraLib(
 `,
   'globals'
 );
+
 export default monaco;

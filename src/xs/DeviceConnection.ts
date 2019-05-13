@@ -1,6 +1,6 @@
-import { EventEmitter } from 'betsy';
-const crlf = String.fromCharCode(13) + String.fromCharCode(10);
+import Emittery from 'emittery';
 
+const crlf = String.fromCharCode(13) + String.fromCharCode(10);
 export type XsbugProperty = {
   name: string;
   value: string;
@@ -21,60 +21,61 @@ export type XsbugFrame = {
 };
 
 export enum XsbugMessageType {
-  Login,
-  Frames,
-  Local,
-  Global,
-  Grammer,
-  Break,
-  Log,
-  InstrumentSample,
-  Instrument
+  Login = 'LOGIN',
+  Frames = 'FRAMES',
+  Local = 'LOCAL',
+  Global = 'GLOBAL',
+  Grammer = 'GRAMMER',
+  Break = 'BREAK',
+  Log = 'LOG',
+  InstrumentSample = 'INSTRUMENT_SAMPLE',
+  Instrument = 'INSTRUMENT'
 }
 
-export type XsbugMessage = {
+export type XsbugMessage<T> = {
   type: XsbugMessageType;
+  value: T;
 };
 
-export type XsbugLoginMessage = {
+export type XsbugLoginMessage = XsbugMessage<{
   name: string;
   value: string;
-} & XsbugMessage;
+}>;
 
-export type XsbugFramesMessage = {
+export type XsbugFramesMessage = XsbugMessage<{
   frames: Array<XsbugFrame>;
-} & XsbugMessage;
+}>;
 
-export type XsbugLocalMessage = {
+export type XsbugLocalMessage = XsbugMessage<{
   frame: XsbugFrame;
   properties: Array<XsbugProperty>;
-} & XsbugMessage;
+}>;
 
-export type XsbugGlobalMessage = {
+export type XsbugGlobalMessage = XsbugMessage<{
   properties: Array<XsbugProperty>;
-} & XsbugMessage;
+}>;
 
-export type XsbugGrammerMessage = {
+export type XsbugGrammerMessage = XsbugMessage<{
   properties: Array<XsbugProperty>;
-} & XsbugMessage;
+}>;
 
-export type XsbugBreakMessage = {
+export type XsbugBreakMessage = XsbugMessage<{
   path: string;
   line: number;
   message: string;
-} & XsbugMessage;
+}>;
 
-export type XsbugLogMessage = {
+export type XsbugLogMessage = XsbugMessage<{
   log: string;
-} & XsbugMessage;
+}>;
 
-export type XsbugInstrumentSampleMessage = {
+export type XsbugInstrumentSampleMessage = XsbugMessage<{
   samples: Array<number>;
-} & XsbugMessage;
+}>;
 
-export type XsbugInstrumentMessage = {
+export type XsbugInstrumentMessage = XsbugMessage<{
   instruments: Array<{ name: string; value: string }>;
-} & XsbugMessage;
+}>;
 
 const XsbugParseFrame = (node): XsbugFrame => {
   const frame: XsbugFrame = {
@@ -115,14 +116,18 @@ const XsbugTypeParser = {
   login(node): XsbugLoginMessage {
     return {
       type: XsbugMessageType.Login,
-      name: node.attributes.name.value,
-      value: node.attributes.value.value
+      value: {
+        name: node.attributes.name.value,
+        value: node.attributes.value.value
+      }
     };
   },
   samples(node): XsbugInstrumentSampleMessage {
     return {
       type: XsbugMessageType.InstrumentSample,
-      samples: node.textContent.split(',').map(value => parseInt(value))
+      value: {
+        samples: node.textContent.split(',').map(value => parseInt(value))
+      }
     };
   },
   frames(node): XsbugFramesMessage {
@@ -132,7 +137,9 @@ const XsbugTypeParser = {
     }
     return {
       type: XsbugMessageType.Frames,
-      frames
+      value: {
+        frames
+      }
     };
   },
   local(node): XsbugLocalMessage {
@@ -144,8 +151,10 @@ const XsbugTypeParser = {
     properties.sort((a, b) => a.name.localeCompare(b.name));
     return {
       type: XsbugMessageType.Local,
-      frame,
-      properties
+      value: {
+        frame,
+        properties
+      }
     };
   },
   global(node): XsbugGlobalMessage {
@@ -156,7 +165,9 @@ const XsbugTypeParser = {
     global.sort((a, b) => a.name.localeCompare(b.name));
     return {
       type: XsbugMessageType.Global,
-      properties: global
+      value: {
+        properties: global
+      }
     };
   },
   grammar(node): XsbugGrammerMessage {
@@ -167,21 +178,27 @@ const XsbugTypeParser = {
     grammer.sort((a, b) => a.name.localeCompare(b.name));
     return {
       type: XsbugMessageType.Grammer,
-      properties: grammer
+      value: {
+        properties: grammer
+      }
     };
   },
   break(node): XsbugBreakMessage {
     return {
       type: XsbugMessageType.Break,
-      path: node.attributes.path.value,
-      line: parseInt(node.attributes.line.value),
-      message: node.textContent
+      value: {
+        path: node.attributes.path.value,
+        line: parseInt(node.attributes.line.value),
+        message: node.textContent
+      }
     };
   },
   log(node): XsbugLogMessage {
     return {
       type: XsbugMessageType.Log,
-      log: node.textContent
+      value: {
+        log: node.textContent
+      }
     };
   },
   instruments(node): XsbugInstrumentMessage {
@@ -194,12 +211,14 @@ const XsbugTypeParser = {
     }
     return {
       type: XsbugMessageType.Instrument,
-      instruments
+      value: {
+        instruments
+      }
     };
   }
 };
 
-const XsbugMessageParser = (xml: Document): Array<XsbugMessage> => {
+const XsbugMessageParser = (xml: Document): Array<XsbugMessage<any>> => {
   const root = xml.documentElement;
   if ('xsbug' !== root.nodeName) throw new Error('not xsbug xml');
   const messages = [];
@@ -239,43 +258,50 @@ function createDeferred<T>(): Deferred<T> {
   })();
 }
 
-export type MessageListener = (
-  data: string | ArrayBufferLike | Blob | ArrayBufferView
-) => void;
+export type DeviceDebuggerEvents = {
+  [XsbugMessageType.Login]: XsbugLoginMessage;
+  [XsbugMessageType.Frames]: XsbugFramesMessage;
+  [XsbugMessageType.Local]: XsbugLocalMessage;
+  [XsbugMessageType.Global]: XsbugGlobalMessage;
+  [XsbugMessageType.Grammer]: XsbugGrammerMessage;
+  [XsbugMessageType.Break]: XsbugBreakMessage;
+  [XsbugMessageType.Log]: XsbugLogMessage;
+  [XsbugMessageType.InstrumentSample]: XsbugInstrumentSampleMessage;
+  [XsbugMessageType.Instrument]: XsbugInstrumentMessage;
+};
 
-export class DeviceConnection {
+export type DebugBreakpoint = {
+  path: string;
+  line: number;
+};
+
+export class DeviceConnection extends Emittery.Typed<DeviceDebuggerEvents> {
   private socket: WebSocket;
   private uri: string;
   private connectionAttempt: number;
 
   private retryTimer: NodeJS.Timeout;
   private deferredConnect: Deferred<DeviceConnection>;
-  private messageListener: Array<MessageListener>;
+
+  private parser: DOMParser;
+
+  private requestID: number;
+  private pending: PendingRequest[];
 
   constructor(uri: string) {
+    super();
     this.uri = uri;
-    this.messageListener = [];
+    this.parser = new DOMParser();
     this.deferredConnect = createDeferred();
   }
 
+  // Websocket Connection.
   public connect() {
     if (this.socket && this.socket.OPEN) {
       return this.deferredConnect.promise;
     }
     this.tryToConnect();
     return this.deferredConnect.promise;
-  }
-
-  public close() {
-    // TODO
-  }
-
-  public addOnDataListener(listener: MessageListener) {
-    this.messageListener.push(listener);
-  }
-
-  public send(data: string | ArrayBufferLike | Blob | ArrayBufferView): void {
-    this.socket.send(data);
   }
 
   private tryToConnect() {
@@ -288,14 +314,23 @@ export class DeviceConnection {
     this.socket.binaryType = 'arraybuffer';
     this.socket.onopen = this._onOpen.bind(this);
     this.socket.onerror = this._onError.bind(this);
+    this.socket.onclose = this._onClose.bind(this);
     this.socket.onmessage = this._onMessage.bind(this);
     this.connectionAttempt++;
+  }
+
+  public close() {
+    clearTimeout(this.retryTimer);
+    if (this.socket) {
+      this.socket.close();
+    }
   }
 
   private _onOpen(e: Event): any {
     clearTimeout(this.retryTimer);
     this.deferredConnect.resolve(this);
   }
+
   private _onError(e: Event): any {
     if (this.connectionAttempt <= 10) {
       this.retryTimer = setTimeout(() => {
@@ -305,41 +340,126 @@ export class DeviceConnection {
       this.deferredConnect.reject(e);
     }
   }
+  private _onClose(e: Event): any {}
 
-  private _onMessage(e: MessageEvent): any {
-    this.messageListener.forEach(listener => listener(e.data));
-  }
-}
-
-export class DeviceControl {
-  private connection: DeviceConnection;
-  private requestID: number;
-  private pending: PendingRequest[];
-
-  constructor(connection: DeviceConnection) {
-    this.connection = connection;
-    this.requestID = 1;
-    this.pending = [];
-    this.connection.addOnDataListener(this.onData.bind(this));
-  }
-  private onData(raw: string | ArrayBufferLike | Blob | ArrayBufferView) {
+  public _onMessage(event: MessageEvent): void {
+    const raw = event.data;
     if (raw instanceof ArrayBuffer) {
-      const data = new DataView(raw);
-      switch (data.getUint8(0)) {
-        case 5:
-          const id = data.getUint16(1),
-            code = data.getInt16(3);
-          const index = this.pending.findIndex(pending => id === pending.id);
-          if (index >= 0) {
-            const pending = this.pending[index];
-            this.pending.splice(index, 1);
-            pending.callback(id, code, raw.slice(5));
-          }
+      this.handleControlMessage(raw);
+    } else if ('string' === typeof raw) {
+      this.handleDebuggingMessage(raw);
+    }
+  }
+
+  // Debugging functions
+  handleDebuggingMessage(raw: string) {
+    const msg = XsbugMessageParser(
+      this.parser.parseFromString(raw, 'application/xml')
+    );
+    msg.forEach(message => {
+      switch (message.type) {
+        case XsbugMessageType.Login:
+          this.emit(XsbugMessageType.Login, message as XsbugLoginMessage);
+          break;
+        case XsbugMessageType.Log:
+          this.emit(XsbugMessageType.Log, message as XsbugLogMessage);
+          break;
+        case XsbugMessageType.Break:
+          this.emit(XsbugMessageType.Break, message as XsbugBreakMessage);
+          break;
+        case XsbugMessageType.Frames:
+          this.emit(XsbugMessageType.Frames, message as XsbugFramesMessage);
+          break;
+        case XsbugMessageType.Local:
+          this.emit(XsbugMessageType.Local, message as XsbugLocalMessage);
+          break;
+        case XsbugMessageType.Global:
+          this.emit(XsbugMessageType.Global, message as XsbugGlobalMessage);
+          break;
+        case XsbugMessageType.Grammer:
+          this.emit(XsbugMessageType.Grammer, message as XsbugGrammerMessage);
+          break;
+        case XsbugMessageType.Instrument:
+          this.emit(
+            XsbugMessageType.Instrument,
+            message as XsbugInstrumentMessage
+          );
+          break;
+        case XsbugMessageType.InstrumentSample:
+          this.emit(
+            XsbugMessageType.InstrumentSample,
+            message as XsbugInstrumentSampleMessage
+          );
           break;
         default:
-          debugger;
           break;
       }
+    });
+  }
+
+  doClearBreakpoint(path: string, line: number) {
+    this.sendCommand(`<clear-breakpoint path="${path}" line="${line}"/>`);
+  }
+  doGo() {
+    this.sendCommand('<go/>');
+  }
+  doSetBreakpoint(path: string, line: number) {
+    this.sendCommand(`<set-breakpoint path="${path}" line="${line}"/>`);
+  }
+  doSelect(value) {
+    this.sendCommand(`<select id="${value}"/>`);
+  }
+  doSetAllBreakpoints(
+    breakpoints: DebugBreakpoint[] = [],
+    exceptions = true,
+    start = false
+  ) {
+    const breakpointLines = breakpoints.map(
+      b => `<breakpoint path="${b.path}" line="${b.line}"/>`
+    );
+    if (exceptions) {
+      breakpointLines.unshift('<breakpoint path="exceptions" line="0"/>');
+    }
+    if (start) {
+      breakpointLines.unshift('<breakpoint path="start" line="0"/>');
+    }
+    this.sendCommand(
+      `<set-all-breakpoints>${breakpointLines.join('')}</set-all-breakpoints>`
+    );
+  }
+  doStep() {
+    this.sendCommand('<step/>');
+  }
+  doStepInside() {
+    this.sendCommand('<step-inside/>');
+  }
+  doStepOutside() {
+    this.sendCommand('<step-outside/>');
+  }
+  doToggle(value) {
+    this.sendCommand(`<toggle id="${value}"/>`);
+  }
+  private sendCommand(msg: String) {
+    this.socket.send(crlf + msg + crlf);
+  }
+
+  // Device Controll
+  private handleControlMessage(raw: ArrayBuffer) {
+    const data = new DataView(raw);
+    switch (data.getUint8(0)) {
+      case 5:
+        const id = data.getUint16(1),
+          code = data.getInt16(3);
+        const index = this.pending.findIndex(pending => id === pending.id);
+        if (index >= 0) {
+          const pending = this.pending[index];
+          this.pending.splice(index, 1);
+          pending.callback(id, code, raw.slice(5));
+        }
+        break;
+      default:
+        debugger;
+        break;
     }
   }
 
@@ -406,386 +526,6 @@ export class DeviceControl {
       this.pending.push({ callback, id: this.requestID++ });
     }
     if (payload) msg.set(new Uint8Array(payload), 3);
-    this.connection.send(msg.buffer);
+    this.socket.send(msg.buffer);
   }
 }
-
-export type DeviceDebuggerEvents = {
-  [XsbugMessageType.Login]: XsbugLoginMessage;
-  [XsbugMessageType.Frames]: XsbugFramesMessage;
-  [XsbugMessageType.Local]: XsbugLocalMessage;
-  [XsbugMessageType.Global]: XsbugGlobalMessage;
-  [XsbugMessageType.Grammer]: XsbugGrammerMessage;
-  [XsbugMessageType.Break]: XsbugBreakMessage;
-  [XsbugMessageType.Log]: XsbugLogMessage;
-  [XsbugMessageType.InstrumentSample]: XsbugInstrumentSampleMessage;
-  [XsbugMessageType.Instrument]: XsbugInstrumentMessage;
-};
-
-export class DeviceDebugger extends EventEmitter<DeviceDebuggerEvents> {
-  private connection: DeviceConnection;
-  private parser: DOMParser;
-
-  constructor(connection: DeviceConnection) {
-    super();
-    this.connection = connection;
-    this.parser = new DOMParser();
-    this.connection.addOnDataListener(this.onData.bind(this));
-  }
-  private onData(data: string | ArrayBufferLike | Blob | ArrayBufferView) {
-    if ('string' === typeof data) {
-      const msg = XsbugMessageParser(
-        this.parser.parseFromString(data, 'application/xml')
-      );
-      msg.forEach(message => {
-        switch (message.type) {
-          case XsbugMessageType.Login:
-            this.emit(XsbugMessageType.Login, message as XsbugLoginMessage);
-            break;
-          case XsbugMessageType.Log:
-            this.emit(XsbugMessageType.Log, message as XsbugLogMessage);
-            break;
-          case XsbugMessageType.Break:
-            this.emit(XsbugMessageType.Break, message as XsbugBreakMessage);
-            break;
-          case XsbugMessageType.Frames:
-            this.emit(XsbugMessageType.Frames, message as XsbugFramesMessage);
-            break;
-          case XsbugMessageType.Local:
-            this.emit(XsbugMessageType.Local, message as XsbugLocalMessage);
-            break;
-          case XsbugMessageType.Global:
-            this.emit(XsbugMessageType.Global, message as XsbugGlobalMessage);
-            break;
-          case XsbugMessageType.Grammer:
-            this.emit(XsbugMessageType.Grammer, message as XsbugGrammerMessage);
-            break;
-          case XsbugMessageType.Instrument:
-            this.emit(
-              XsbugMessageType.Instrument,
-              message as XsbugInstrumentMessage
-            );
-            break;
-          case XsbugMessageType.InstrumentSample:
-            this.emit(
-              XsbugMessageType.InstrumentSample,
-              message as XsbugInstrumentSampleMessage
-            );
-            break;
-          default:
-            break;
-        }
-      });
-    }
-  }
-
-  doClearBreakpoint(path, line) {
-    this.sendCommand(`<clear-breakpoint path="${path}" line="${line}"/>`);
-  }
-  doGo() {
-    this.sendCommand('<go/>');
-  }
-  doSetBreakpoint(path, line) {
-    this.sendCommand(`<set-breakpoint path="${path}" line="${line}"/>`);
-  }
-  doSelect(value) {
-    this.sendCommand(`<select id="${value}"/>`);
-  }
-  doSetAllBreakpoints(breakpoints = [], exceptions = true, start = false) {
-    breakpoints = breakpoints.map(
-      b => `<breakpoint path="${b.path}" line="${b.line}"/>`
-    );
-    if (exceptions)
-      breakpoints.unshift('<breakpoint path="exceptions" line="0"/>');
-    if (start) breakpoints.unshift('<breakpoint path="start" line="0"/>');
-    this.sendCommand(
-      `<set-all-breakpoints>${breakpoints.join('')}</set-all-breakpoints>`
-    );
-  }
-  doStep() {
-    this.sendCommand('<step/>');
-  }
-  doStepInside() {
-    this.sendCommand('<step-inside/>');
-  }
-  doStepOutside() {
-    this.sendCommand('<step-outside/>');
-  }
-  doToggle(value) {
-    this.sendCommand(`<toggle id="${value}"/>`);
-  }
-
-  private sendCommand(msg: String) {
-    this.connection.send(crlf + msg + crlf);
-  }
-}
-
-/*
-export default class DeviceConnection {
-  private disconnected: boolean;
-
-  private connectTimer: NodeJS.Timeout;
-  private connectionAttempt: number;
-
-  private uri: string;
-  private socket: WebSocket;
-  private parser: DOMParser;
-
-  private requestID: number;
-  private pending: PendingRequest[];
-
-  private deferredConnection: Deferred<DeviceConnection>;
-
-  constructor(uri: string) {
-    this.uri = uri;
-    this.parser = new DOMParser();
-    this.connectionAttempt = 0;
-    this.disconnected = false;
-  }
-
-  public connect() {
-    this.initSocket();
-    this.deferredConnection = createDeferred();
-    return this.deferredConnection.promise;
-  }
-
-  public disconnect() {
-    this.disconnected = true;
-    clearTimeout(this.connectTimer);
-    if (this.socket) {
-      // Closing the socket will
-      // hang the esp
-      //this.socket.close();
-    }
-  }
-
-  private initSocket() {
-    this.requestID = 1;
-    this.socket = new WebSocket(this.uri, ['x-xsbug']);
-    this.socket.binaryType = 'arraybuffer';
-    this.socket.onopen = this._onOpen.bind(this);
-    this.socket.onclose = this._onClose.bind(this);
-    this.socket.onerror = this._onError.bind(this);
-    this.socket.onmessage = this._onMessage.bind(this);
-    this.connectionAttempt++;
-  }
-
-  private _onOpen(ev: Event) {
-    if (this.disconnected) return;
-    clearTimeout(this.connectTimer);
-    this.onOpen(ev);
-    this.deferredConnection.resolve(this);
-    this.deferredConnection = null;
-  }
-
-  private _onError(err: Event) {
-    if (this.disconnected) return;
-    if (this.connectionAttempt <= 10) {
-      this.connectTimer = setTimeout(() => {
-        this.initSocket();
-      }, 1000);
-    } else {
-      this.onConnectionError();
-      this.deferredConnection.reject(err);
-      this.deferredConnection = null;
-    }
-  }
-
-  private _onClose(ev: CloseEvent) {
-    if (this.disconnected) return;
-    this.onClose(ev);
-  }
-
-  private _onMessage(event: MessageEvent) {
-    if (this.disconnected) return;
-
-    if ('string' === typeof event.data) {
-      const msg = XsbugMessageParser(
-        this.parser.parseFromString(event.data, 'application/xml')
-      );
-      msg.forEach(message => {
-        switch (message.type) {
-          case XsbugMessageType.Login:
-            this.onLogin(message as XsbugLoginMessage);
-            break;
-          case XsbugMessageType.Log:
-            this.onLog(message as XsbugLogMessage);
-            break;
-          case XsbugMessageType.Break:
-            this.onBreak(message as XsbugBreakMessage);
-            break;
-          case XsbugMessageType.Frames:
-            this.onFrames(message as XsbugFramesMessage);
-            break;
-          case XsbugMessageType.Local:
-            this.onLocal(message as XsbugLocalMessage);
-            break;
-          case XsbugMessageType.Global:
-            this.onGlobal(message as XsbugGlobalMessage);
-            break;
-          case XsbugMessageType.Grammer:
-            this.onGrammer(message as XsbugGrammerMessage);
-            break;
-          case XsbugMessageType.Instrument:
-            this.onInstrumentationConfigure(message as XsbugInstrumentMessage);
-            break;
-          case XsbugMessageType.InstrumentSample:
-            this.onInstrumentationSamples(
-              message as XsbugInstrumentSampleMessage
-            );
-            break;
-          default:
-            break;
-        }
-      });
-    } else {
-      const data = new DataView(event.data);
-      switch (data.getUint8(0)) {
-        case 5:
-          const id = data.getUint16(1),
-            code = data.getInt16(3);
-          const index = this.pending.findIndex(pending => id === pending.id);
-          if (index >= 0) {
-            const pending = this.pending[index];
-            this.pending.splice(index, 1);
-            pending.callback(id, code, event.data.slice(5));
-          }
-          break;
-        default:
-          debugger;
-          break;
-      }
-    }
-  }
-
-  // WebSocket Events
-  onClose(ev: CloseEvent) {}
-  onOpen(ev: Event) {}
-  onError(ev: Event) {}
-  onConnectionError() {}
-
-  send(data) {
-    return this.socket.send(data);
-  }
-
-  // Debugging actions
-  doClearBreakpoint(path, line) {
-    this.sendCommand(`<clear-breakpoint path="${path}" line="${line}"/>`);
-  }
-  doGo() {
-    this.sendCommand('<go/>');
-  }
-  doSetBreakpoint(path, line) {
-    this.sendCommand(`<set-breakpoint path="${path}" line="${line}"/>`);
-  }
-  doSelect(value) {
-    this.sendCommand(`<select id="${value}"/>`);
-  }
-  doSetAllBreakpoints(breakpoints = [], exceptions = true, start = false) {
-    breakpoints = breakpoints.map(
-      b => `<breakpoint path="${b.path}" line="${b.line}"/>`
-    );
-    if (exceptions)
-      breakpoints.unshift('<breakpoint path="exceptions" line="0"/>');
-    if (start) breakpoints.unshift('<breakpoint path="start" line="0"/>');
-    this.sendCommand(
-      `<set-all-breakpoints>${breakpoints.join('')}</set-all-breakpoints>`
-    );
-  }
-  doStep() {
-    this.sendCommand('<step/>');
-  }
-  doStepInside() {
-    this.sendCommand('<step-inside/>');
-  }
-  doStepOutside() {
-    this.sendCommand('<step-outside/>');
-  }
-  doToggle(value) {
-    this.sendCommand(`<toggle id="${value}"/>`);
-  }
-
-  // Debug Events
-  onBreak(msg: XsbugBreakMessage) {}
-  onLogin(msg: XsbugLoginMessage) {}
-  onInstrumentationConfigure(msg: XsbugInstrumentMessage) {}
-  onInstrumentationSamples(msg: XsbugInstrumentSampleMessage) {}
-  onFrames(msg: XsbugFramesMessage) {}
-  onLocal(msg: XsbugLocalMessage) {}
-  onGlobal(msg: XsbugGlobalMessage) {}
-  onGrammer(msg: XsbugGrammerMessage) {}
-  onLog(msg: XsbugLogMessage) {}
-
-  // Host actions
-  doGetPreference(domain, key, callback) {
-    const byteLength = domain.length + 1 + key.length + 1;
-    const payload = new Uint8Array(byteLength);
-    let j = 0;
-    for (let i = 0; i < domain.length; i++) payload[j++] = domain.charCodeAt(i);
-    j++;
-    for (let i = 0; i < key.length; i++) payload[j++] = key.charCodeAt(i);
-
-    this.sendBinaryCommand(6, payload, callback);
-  }
-  doInstall(offset: number, data: Uint8Array) {
-    const max = 512;
-    for (let i = 0; i < data.byteLength; i += max, offset += max) {
-      const use = Math.min(max, data.byteLength - i);
-      const payload = new Uint8Array(4 + use);
-      payload[0] = (offset >> 24) & 0xff;
-      payload[1] = (offset >> 16) & 0xff;
-      payload[2] = (offset >> 8) & 0xff;
-      payload[3] = offset & 0xff;
-      payload.set(data.subarray(i, i + use), 4);
-
-      this.sendBinaryCommand(3, payload);
-    }
-  }
-  doRestart() {
-    this.sendBinaryCommand(1);
-  }
-  doSetPreference(domain: String, key: String, value: String) {
-    // assumes 7 bit ASCII values
-    const byteLength = domain.length + 1 + key.length + 1 + value.length + 1;
-    const payload = new Uint8Array(byteLength);
-    let j = 0;
-    for (let i = 0; i < domain.length; i++) payload[j++] = domain.charCodeAt(i);
-    j++;
-    for (let i = 0; i < key.length; i++) payload[j++] = key.charCodeAt(i);
-    j++;
-    for (let i = 0; i < value.length; i++) payload[j++] = value.charCodeAt(i);
-
-    this.sendBinaryCommand(4, payload);
-  }
-  doUninstall(callback: ReplyCallback) {
-    this.sendBinaryCommand(2, undefined, callback);
-  }
-
-  // Helper
-  sendCommand(msg: String) {
-    this.send(crlf + msg + crlf);
-  }
-
-  sendBinaryCommand(
-    command: number,
-    payload: Uint8Array | ArrayBuffer = undefined,
-    callback: ReplyCallback = undefined
-  ) {
-    if (payload) {
-      if (!(payload instanceof ArrayBuffer)) payload = payload.buffer;
-    }
-    let needed = 1;
-    if (payload) needed += 2 + payload.byteLength;
-    else if (callback) needed += 2;
-    const msg = new Uint8Array(needed);
-    msg[0] = command;
-    if (callback) {
-      msg[1] = this.requestID >> 8;
-      msg[2] = this.requestID & 0xff;
-      this.pending.push({ callback, id: this.requestID++ });
-    }
-    if (payload) msg.set(new Uint8Array(payload), 3);
-    this.send(msg.buffer);
-  }
-}
-*/

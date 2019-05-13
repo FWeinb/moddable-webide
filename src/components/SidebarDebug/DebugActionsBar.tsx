@@ -7,7 +7,9 @@ import {
   DebugRestartIcon,
   DebugBreakIcon,
   DebugGoIcon,
-  DebugStepIcon
+  DebugStepIcon,
+  DebugStepIntoIcon,
+  DebugStepOutIcon
 } from '../Icons/DebugActionIcons';
 
 import { useOvermind } from '../../overmind';
@@ -20,7 +22,13 @@ const DebugActionsBar: React.FC = () => {
       }
     },
     actions: {
-      Device: { debugRestart, debugGo, debugStep }
+      Device: {
+        debugRestart,
+        debugGo,
+        debugStep,
+        debugStepInside,
+        debugStepOutside
+      }
     }
   } = useOvermind();
 
@@ -33,7 +41,7 @@ const DebugActionsBar: React.FC = () => {
         flexShrink: 0,
         justifyContent: 'space-evenly',
         overflow: 'hidden',
-        minWidth: 150,
+        minWidth: 230,
         maxWidth: 250
       }}
     >
@@ -71,6 +79,24 @@ const DebugActionsBar: React.FC = () => {
         }}
       >
         <DebugStepIcon />
+      </Button>
+      <Button
+        title={'Step Inside'}
+        disabled={!isActiveBreak}
+        onClick={() => {
+          debugStepInside();
+        }}
+      >
+        <DebugStepIntoIcon />
+      </Button>
+      <Button
+        title={'Step Outside'}
+        disabled={!isActiveBreak}
+        onClick={() => {
+          debugStepOutside();
+        }}
+      >
+        <DebugStepOutIcon />
       </Button>
     </div>
   );

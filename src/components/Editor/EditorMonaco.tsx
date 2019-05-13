@@ -22,11 +22,11 @@ type EditorState = {
 const Editor: React.FC = () => {
   const {
     state: {
-      Editor: { openSelection, activeFile, activeBreakPoint },
+      Editor: { openSelection, activeFile, breakpoints },
       Storage
     },
     actions: {
-      Editor: { updateEditorFile }
+      Editor: { updateEditorFile, addBreakpoint }
     },
     effects: {
       Editor: { getModel }
@@ -67,12 +67,13 @@ const Editor: React.FC = () => {
     });
 
     disableBodyScroll(editor.current);
+
     return () => {
       editor.current.dispose();
     };
   }, [editorContainer]);
 
-  // Add Save Shortcut
+  // Add Save Shortcut + add breakpoints
   useEffect(() => {
     if (!activeFile) return;
 
@@ -92,6 +93,17 @@ const Editor: React.FC = () => {
         });
       }
     );
+
+    const mouseDown = editor.current.onMouseDown(e => {
+      e.event.preventDefault();
+      if (e.target.type === monaco.editor.MouseTargetType.GUTTER_LINE_NUMBERS) {
+        const lineNumber = e.target.position.lineNumber;
+        addBreakpoint({ fileId: activeFile.id, line: lineNumber });
+      }
+    });
+    return () => {
+      mouseDown.dispose();
+    };
   }, [activeFile]);
 
   // Open Files
@@ -136,7 +148,41 @@ const Editor: React.FC = () => {
     }
   }, [editor, activeFile]);
 
+  // Breakpoints
+  // that will be transfered to the debugger
+  // if connected
+  useEffect(() => {
+    if (!breakpoints) return;
+
+    const oldDecorations = editor.current.deltaDecorations(
+      [],
+      breakpoints
+        .filter(breakpoint => breakpoint && breakpoint.fileId === activeFile.id)
+        .map(breakpoint => {
+          if (breakpoint.active) {
+            editor.current.revealLineInCenterIfOutsideViewport(breakpoint.line);
+          }
+          return {
+            range: new monaco.Range(breakpoint.line, 1, breakpoint.line, 1),
+            options: {
+              isWholeLine: true,
+              stickiness: 1,
+              className: breakpoint.active && 'line-Breakpoint',
+              linesDecorationsClassName: 'glyph-Breakpoint',
+              glyphMarginHoverMessage: {
+                value: breakpoint.message
+              }
+            }
+          };
+        })
+    );
+    return () => {
+      editor.current.deltaDecorations(oldDecorations, []);
+    };
+  }, [activeFile, breakpoints.length]);
+
   // Apply activeBreakpoint
+  /*
   useEffect(() => {
     if (!activeBreakPoint) return;
 
@@ -164,6 +210,7 @@ const Editor: React.FC = () => {
       editor.current.deltaDecorations(oldDecorations, []);
     };
   }, [editor, activeBreakPoint]);
+  */
 
   useEffect(() => {
     if (!openSelection) return;

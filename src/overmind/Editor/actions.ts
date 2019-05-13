@@ -1,5 +1,5 @@
 import { Action } from 'overmind';
-import { BreakPoint, EditorFile } from './state';
+import { EditorFile, EditorBreakpoint } from './state';
 import { getIdByPath } from '../Storage/utils';
 
 export const closeAllFiles: Action = ({ state, actions, effects }) => {
@@ -87,10 +87,38 @@ export const updateEditorFile: Action<EditorFile & { content?: string }> = (
   }
 };
 
-export const openFileOnBreakPoint: Action<BreakPoint> = (
+export const addBreakpoint: Action<EditorBreakpoint> = (
   { state, actions },
-  breakPoint
+  breakpoint
 ) => {
-  actions.Editor.openFile(breakPoint.fileId);
-  state.Editor.activeBreakPoint = breakPoint;
+  const find = state.Editor.breakpoints.findIndex(
+    otherBreakpoint =>
+      breakpoint.fileId === otherBreakpoint.fileId &&
+      breakpoint.line === otherBreakpoint.line
+  );
+
+  // Only one active breakpoint
+  if (breakpoint.active) {
+    state.Editor.breakpoints = state.Editor.breakpoints.filter(
+      otherBreakpoint => !otherBreakpoint.active
+    );
+  }
+
+  if (find >= 0) {
+    if (breakpoint.active) {
+      // Update
+      state.Editor.breakpoints[find] = breakpoint;
+    } else {
+      // Remove
+      state.Editor.breakpoints.splice(find, 1);
+      actions.Device.clearBreakpoint(breakpoint);
+    }
+  } else {
+    // Add
+    state.Editor.breakpoints.push(breakpoint);
+    if (!breakpoint.active) {
+      actions.Device.addBreakpoint(breakpoint);
+    }
+  }
+  console.log(state.Editor.breakpoints);
 };

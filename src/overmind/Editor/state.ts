@@ -1,9 +1,8 @@
-import { IRange } from 'monaco-editor/esm/vs/editor/editor.api';
-
-export type BreakPoint = {
+export type EditorBreakpoint = {
   fileId: string;
-  message: string;
   line: number;
+  message?: string;
+  active?: boolean;
 };
 
 export type EditorFile = {
@@ -14,15 +13,14 @@ export type EditorFile = {
 export type Editor = {
   activeFile: EditorFile;
   openTabs: EditorFile[];
-
-  activeBreakPoint: BreakPoint;
+  breakpoints: EditorBreakpoint[];
   openSelection: any;
 };
 
 const state: Editor = {
   activeFile: undefined,
   openTabs: [],
-  activeBreakPoint: undefined,
+  breakpoints: [],
   openSelection: undefined
 };
 

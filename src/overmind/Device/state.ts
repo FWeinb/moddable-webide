@@ -1,11 +1,9 @@
 import {
   DeviceConnection,
-  DeviceDebugger,
   XsbugLocalMessage,
   XsbugGlobalMessage,
   XsbugGrammerMessage,
-  XsbugFrame,
-  DeviceControl
+  XsbugFrame
 } from '../../xs/DeviceConnection';
 
 export type DeviceInstrument = {
@@ -36,7 +34,6 @@ export type DebugBreak = {
 
 export type Debug = {
   state: DebugState;
-  debugger: DeviceDebugger;
   activeBreak: DebugBreak;
   instruments: DeviceInstrument[];
   samples: number[][];
@@ -51,22 +48,14 @@ export type Debug = {
 export type Device = {
   host: string;
   connectionState: ConnectionState;
-  connection: DeviceConnection;
-  control: DeviceControl;
   debug: Debug;
 };
 
 const state: Device = {
   host: 'runmod.local',
-
   connectionState: ConnectionState.DISCONNECTED,
-  connection: null,
-  control: null,
-
   debug: {
     state: DebugState.DISCONNECTED,
-    debugger: null,
-
     activeBreak: null,
     frames: {
       calls: null,

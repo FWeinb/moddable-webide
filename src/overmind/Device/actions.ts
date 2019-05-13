@@ -1,77 +1,95 @@
-import {
-  pipe,
-  mutate,
-  wait,
-  when,
-  run,
-  Action,
-  Operator,
-  noop
-} from 'overmind';
-
+import { pipe, mutate, map, run, Action, fork } from 'overmind';
 import * as o from './operators';
-import { SidebarView } from '../rootState';
+
+import { XsbugMessageType, XsbugMessage } from '../../xs/DeviceConnection';
+import { EditorBreakpoint } from '../Editor/state';
+import { getPath, getDevicePath } from '../Storage/utils';
+import state from './state';
 
 export const setDeviceHostName: Action<string> = ({ state }, hostName) => {
   state.Device.host = hostName;
 };
 
-export const connectDebugger: Action = pipe(
-  o.checkConnection,
-  run(({ state, actions }) => {
-    if (state.selectedSidebarView !== SidebarView.Debug) {
-      actions.setActiveSidebarView(SidebarView.Debug);
-    }
+export const connectDebugger: Action = o.ensureConnection;
+
+export const handleConnectionEvents: Action<XsbugMessage<any>> = pipe(
+  o.forkConnectionEvent({
+    [XsbugMessageType.Login]: o.debugLogin,
+    [XsbugMessageType.Frames]: o.debugFrames,
+    [XsbugMessageType.Local]: o.debugLocal,
+    [XsbugMessageType.Global]: o.debugGlobal,
+    [XsbugMessageType.Grammer]: o.debugGrammer,
+    [XsbugMessageType.Break]: o.debugBreak,
+    [XsbugMessageType.Log]: o.debugLog,
+    [XsbugMessageType.InstrumentSample]: o.debugInstrumentSample,
+    [XsbugMessageType.Instrument]: o.debugInstrument
   })
 );
 
-const connectAfterRestart = pipe(
-  wait(100),
-  o.setupConnection,
-  // TODO:
-  // The device should not accept new connection when doRestart()
-  // was called.
-  wait(2000),
-  o.connect
-);
-
 export const installMod: Action<Uint8Array> = pipe(
-  o.checkConnection,
-  mutate(({ state, actions }, payload: Uint8Array) => {
-    console.log(state.Device.control);
-    state.Device.control.doSetPreference('config', 'when', 'debug');
+  o.ensureConnection,
+  mutate(({ actions, effects }, payload: Uint8Array) => {
+    effects.Device.connection.doSetPreference('config', 'when', 'debug');
     actions.Log.addMessage('Uploading...');
-    state.Device.control.doInstall(0, payload);
+    effects.Device.connection.doInstall(0, payload);
     actions.Log.addMessage('...done');
-    state.Device.control.doRestart();
+    effects.Device.connection.doRestart();
   }),
-  connectAfterRestart
+  o.disconnect,
+  o.connectAfterRestart
 );
 
-// Debugging
 export const debugRestart: Action = pipe(
-  mutate(async ({ state }) => {
+  mutate(async ({ state, effects }) => {
     state.Editor.activeBreakPoint = null;
     state.Device.debug.activeBreak = null;
-    state.Device.control.doRestart();
+    effects.Device.connection.doRestart();
   }),
-  connectAfterRestart
+  o.disconnect,
+  o.connectAfterRestart
 );
 
-export const debugGo: Action = async ({ state }) => {
+export const clearBreakpoint: Action<EditorBreakpoint> = (
+  { state, effects },
+  breakpoint
+) => {
+  effects.Device.connection &&
+    effects.Device.connection.doClearBreakpoint(
+      getDevicePath(state.Storage, breakpoint.fileId),
+      breakpoint.line
+    );
+};
+export const addBreakpoint: Action<EditorBreakpoint> = (
+  { state, effects },
+  breakpoint
+) => {
+  effects.Device.connection &&
+    effects.Device.connection.doSetBreakpoint(
+      getDevicePath(state.Storage, breakpoint.fileId),
+      breakpoint.line
+    );
+};
+
+export const debugGo: Action = ({ state, effects }) => {
   state.Editor.activeBreakPoint = null;
   state.Device.debug.activeBreak = null;
-  state.Device.debug.debugger.doGo();
+  effects.Device.connection.doGo();
 };
 
-export const debugStep: Action = ({ state }) => {
-  state.Device.debug.debugger.doStep();
+export const debugStep: Action = ({ effects }) => {
+  effects.Device.connection.doStep();
+};
+export const debugStepInside: Action = ({ effects }) => {
+  effects.Device.connection.doStepInside();
+};
+export const debugStepOutside: Action = ({ effects }) => {
+  effects.Device.connection.doStepOutside();
 };
 
-export const debugSelectFrame: Action<string> = ({ state }, value) => {
-  state.Device.debug.debugger.doSelect(value);
+export const debugSelectFrame: Action<string> = ({ effects }, value) => {
+  effects.Device.connection.doSelect(value);
 };
 
-export const debugToggleValue: Action<string> = ({ state }, value) => {
-  state.Device.debug.debugger.doToggle(value);
+export const debugToggleValue: Action<string> = ({ effects }, value) => {
+  effects.Device.connection.doToggle(value);
 };
