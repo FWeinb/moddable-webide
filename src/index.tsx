@@ -16,49 +16,54 @@ import ActivityBar from './components/ActivityBar';
 
 import { DragDropContextProvider } from 'react-dnd';
 import HTML5Backend from './utils/HTML5DirectoryBackend';
+import { Provider } from 'overmind-react';
+
+import { overmind } from './overmind';
 
 const App: React.FunctionComponent = () => {
   return (
     <DragDropContextProvider backend={HTML5Backend}>
-      <div
-        css={{
-          display: 'grid',
-          gridTemplateColumns: '50px auto',
-          gridTemplateRows: '40px auto',
-          height: '100vh'
-        }}
-      >
+      <Provider value={overmind}>
         <div
           css={{
-            gridRow: 1,
-            gridColumn: '1 / 3',
-            background: 'var(--color-lightest)'
+            display: 'grid',
+            gridTemplateColumns: '50px auto',
+            gridTemplateRows: '40px auto',
+            height: '100vh'
           }}
         >
-          <TopBar />
+          <div
+            css={{
+              gridRow: 1,
+              gridColumn: '1 / 3',
+              background: 'var(--color-lightest)'
+            }}
+          >
+            <TopBar />
+          </div>
+          <div
+            css={{
+              gridRow: 2,
+              gridColumn: 1
+            }}
+          >
+            <ActivityBar />
+          </div>
+          <div
+            css={{
+              gridRow: 2,
+              gridColumn: 2,
+              height: 'calc(100vh - 40px)'
+            }}
+          >
+            <Layout
+              content={<Editor />}
+              sidebar={<SidebarViewContainer />}
+              log={<Log />}
+            />
+          </div>
         </div>
-        <div
-          css={{
-            gridRow: 2,
-            gridColumn: 1
-          }}
-        >
-          <ActivityBar />
-        </div>
-        <div
-          css={{
-            gridRow: 2,
-            gridColumn: 2,
-            height: 'calc(100vh - 40px)'
-          }}
-        >
-          <Layout
-            content={<Editor />}
-            sidebar={<SidebarViewContainer />}
-            log={<Log />}
-          />
-        </div>
-      </div>
+      </Provider>
     </DragDropContextProvider>
   );
 };
