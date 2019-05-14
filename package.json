@@ -56,11 +56,14 @@
   },
   "dependencies": {
     "body-scroll-lock": "^2.6.1",
+    "html-dir-content": "^0.3.0",
     "localforage": "^1.7.3",
     "monaco-editor": "^0.17.0",
-    "overmind": "^18.0.0-1557390163104",
-    "overmind-react": "^19.0.0-1557390163104",
+    "overmind": "^18.0.0-1557824735814",
+    "overmind-react": "^19.0.0-1557824735814",
     "react": "^16.8.6",
+    "react-dnd": "^7.4.5",
+    "react-dnd-html5-backend": "^7.4.4",
     "react-dom": "^16.8.6",
     "react-dropzone": "^10.1.4",
     "react-split-pane": "^0.1.87"

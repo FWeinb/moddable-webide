@@ -1,8 +1,7 @@
 export type EditorBreakpoint = {
   fileId: string;
   line: number;
-  message?: string;
-  active?: boolean;
+  disabled?: boolean;
 };
 
 export type EditorFile = {
@@ -14,14 +13,14 @@ export type Editor = {
   activeFile: EditorFile;
   openTabs: EditorFile[];
   breakpoints: EditorBreakpoint[];
-  openSelection: any;
+  currentBreakpoint: EditorBreakpoint & { message: string };
 };
 
 const state: Editor = {
-  activeFile: undefined,
+  activeFile: null,
   openTabs: [],
   breakpoints: [],
-  openSelection: undefined
+  currentBreakpoint: null
 };
 
 export default state;

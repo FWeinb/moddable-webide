@@ -8,7 +8,7 @@ var projectStorage = localforage.createInstance({
 });
 
 const getProjectStorageKey = (project: string) => {
-  return project ? project + `.${storageKey}` : storageKey;
+  return project === null ? storageKey : `${project}.${storageKey}`;
 };
 
 export const hasProject = async (project: string) => {
@@ -29,7 +29,7 @@ export const getProjectList = async () => {
 };
 
 export const removeProject = async (project: string) => {
-  await projectStorage.removeItem(getProjectStorageKey(project ? project : ''));
+  await projectStorage.removeItem(getProjectStorageKey(project));
 };
 
 export const saveToLocalStorage = async (storage: XStorage) => {

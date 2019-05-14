@@ -4,7 +4,7 @@ import { jsx } from '@emotion/core';
 import React from 'react';
 
 import { useOvermind } from '../../overmind';
-import { ConnectionState, DeviceInstrument } from '../../overmind/Device/state';
+import { ConnectionState } from '../../overmind/Device/state';
 
 import SidebarView from '../SidebarView';
 import DebugActionsBar from './DebugActionsBar';
@@ -12,6 +12,7 @@ import DebugActionsBar from './DebugActionsBar';
 import DebugPropertiesPanel from './DebugPropertiesPanel';
 import InstrumentationPanel from './InstrumentationPanel';
 import SidebarPanel from '../SidebarPanel';
+import BreakpointPanel from './BreakpointPanel';
 
 function getMessage(connectionState: ConnectionState) {
   switch (connectionState) {
@@ -25,15 +26,18 @@ function getMessage(connectionState: ConnectionState) {
 const SidebarDebug: React.FunctionComponent = () => {
   const {
     state: {
+      Editor: { breakpoints },
       Device: {
         connectionState,
         debug: {
           frames: { calls, local, global, grammer },
           activeBreak
         }
-      }
+      },
+      Storage: { files }
     },
     actions: {
+      Editor: { toggleBreakpoint },
       Device: { debugToggleValue, debugSelectFrame }
     }
   } = useOvermind();
@@ -56,7 +60,13 @@ const SidebarDebug: React.FunctionComponent = () => {
               overflowY: 'auto'
             }}
           >
+            <BreakpointPanel
+              breakpoints={breakpoints}
+              toggleBreakpoint={toggleBreakpoint}
+              getFileName={fileId => files[fileId].name}
+            />
             <InstrumentationPanel />
+
             {isActiveBreak && (
               <React.Fragment>
                 {/*TODO: MOve this to an element for this*/}

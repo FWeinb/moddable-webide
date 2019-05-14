@@ -8,5 +8,6 @@ export const closeConnection = () => {
 };
 
 export const createConnection = (host: string) => {
-  return (connection = new DeviceConnection(host));
+  // @ts-ignore
+  return (window.connection = connection = new DeviceConnection(host));
 };

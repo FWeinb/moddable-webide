@@ -1,6 +1,7 @@
 import { mutate, run, map, Operator } from 'overmind';
-import { XFile, XStorage, Directory } from './state';
+import { XFile, XStorage, Directory, INode } from './state';
 import { generateNodeId } from './utils';
+import { DroppedFiles } from './types';
 
 export const setFiles: Operator<Omit<XStorage, 'project'>> = mutate(
   ({ state }, { files, directories }) => {
@@ -71,27 +72,33 @@ export const getSampleFiles: Operator<string, Omit<XStorage, 'project'>> = map(
   }
 );
 
-export const readDroppedFiles: Operator<File[], XFile[]> = map(
-  async (_, files) => {
-    // TODO: Handle creation of directories here
-    return await Promise.all(
-      files.map(async file => {
-        if (file.type.startsWith('text')) {
-          return {
-            id: generateNodeId(),
-            name: file.name,
-            binary: false,
-            content: await readFile(file)
-          };
-        } else {
-          return {
-            id: generateNodeId(),
-            name: file.name,
-            binary: true,
-            content: await readBinaryFile(file)
-          };
-        }
-      })
+export const readDroppedFiles: Operator<DroppedFiles, XFile[]> = map(
+  (_, drop) => {
+    return Promise.all(
+      drop.files
+        .filter(file => !file.name.startsWith('.DS_Store'))
+        .map(async file => {
+          if (
+            file.type.startsWith('text/') ||
+            file.type === 'application/json'
+          ) {
+            return {
+              id: generateNodeId(),
+              parent: drop.parent,
+              name: file.name,
+              binary: false,
+              content: await readFile(file)
+            };
+          } else {
+            return {
+              id: generateNodeId(),
+              parent: drop.parent,
+              name: file.name,
+              binary: true,
+              content: await readBinaryFile(file)
+            };
+          }
+        })
     );
   }
 );

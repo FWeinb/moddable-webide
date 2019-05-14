@@ -1,8 +1,10 @@
-import { Action, pipe, mutate, run } from 'overmind';
+import { Action, pipe, mutate, run, json } from 'overmind';
 
 import * as o from './operators';
 import { generateNodeId } from './utils';
 import { XStorage } from './state';
+import { DroppedFiles } from './types';
+import { async } from 'q';
 
 export const openProject: Action<string> = pipe(
   mutate(async ({ state, actions }, projectName) => {
@@ -23,21 +25,21 @@ export const openProject: Action<string> = pipe(
   o.openDefaultFile
 );
 
-export const removeProject: Action<string> = (
+export const removeProject: Action<string> = async (
   { state, actions, effects },
   projectName
 ) => {
   if (state.Storage.project === projectName) {
-    actions.Editor.closeAllFiles();
+    await actions.Editor.closeAllFiles();
   }
   state.Storage.project = null;
   state.Storage.files = {};
   state.Storage.directories = {};
 
-  effects.Storage.removeProject(projectName);
+  await effects.Storage.removeProject(projectName);
 
   // Update url
-  var newurl = location.origin + location.pathname;
+  let newurl = location.origin + location.pathname;
   window.history.pushState(null, '', newurl);
 };
 
@@ -84,7 +86,7 @@ export const updateFile: Action<{ id: string; content: string }> = pipe(
   o.persist
 );
 
-export const addDroppedFiles: Action<File[]> = pipe(
+export const addDroppedFiles: Action<DroppedFiles> = pipe(
   o.readDroppedFiles,
   o.mergeFilesIntoFiles,
   o.persist

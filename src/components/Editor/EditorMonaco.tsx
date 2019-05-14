@@ -22,7 +22,7 @@ type EditorState = {
 const Editor: React.FC = () => {
   const {
     state: {
-      Editor: { openSelection, activeFile, breakpoints },
+      Editor: { activeFile, breakpoints, currentBreakpoint },
       Storage
     },
     actions: {
@@ -62,6 +62,8 @@ const Editor: React.FC = () => {
       minimap: {
         enabled: false
       },
+      lineNumbersMinChars: 2,
+      glyphMargin: true,
       theme: 'vs-dark',
       automaticLayout: true
     });
@@ -96,7 +98,7 @@ const Editor: React.FC = () => {
 
     const mouseDown = editor.current.onMouseDown(e => {
       e.event.preventDefault();
-      if (e.target.type === monaco.editor.MouseTargetType.GUTTER_LINE_NUMBERS) {
+      if (e.target.type === monaco.editor.MouseTargetType.GUTTER_GLYPH_MARGIN) {
         const lineNumber = e.target.position.lineNumber;
         addBreakpoint({ fileId: activeFile.id, line: lineNumber });
       }
@@ -153,85 +155,51 @@ const Editor: React.FC = () => {
   // if connected
   useEffect(() => {
     if (!breakpoints) return;
-
-    const oldDecorations = editor.current.deltaDecorations(
-      [],
-      breakpoints
-        .filter(breakpoint => breakpoint && breakpoint.fileId === activeFile.id)
-        .map(breakpoint => {
-          if (breakpoint.active) {
-            editor.current.revealLineInCenterIfOutsideViewport(breakpoint.line);
-          }
-          return {
-            range: new monaco.Range(breakpoint.line, 1, breakpoint.line, 1),
-            options: {
-              isWholeLine: true,
-              stickiness: 1,
-              className: breakpoint.active && 'line-Breakpoint',
-              linesDecorationsClassName: 'glyph-Breakpoint',
-              glyphMarginHoverMessage: {
-                value: breakpoint.message
-              }
-            }
-          };
-        })
-    );
-    return () => {
-      editor.current.deltaDecorations(oldDecorations, []);
-    };
-  }, [activeFile, breakpoints.length]);
-
-  // Apply activeBreakpoint
-  /*
-  useEffect(() => {
-    if (!activeBreakPoint) return;
-
-    const { line, message } = activeBreakPoint;
-
-    editor.current.revealLineInCenterIfOutsideViewport(line);
-    const oldDecorations = editor.current.deltaDecorations(
-      [],
-      [
-        {
-          range: new monaco.Range(line, 1, line, 1),
+    let breakpointDecorations: monaco.editor.IModelDeltaDecoration[] = breakpoints
+      .filter(breakpoint => breakpoint && breakpoint.fileId === activeFile.id)
+      .map(breakpoint => {
+        return {
+          range: new monaco.Range(breakpoint.line, 1, breakpoint.line, 1),
           options: {
             isWholeLine: true,
             stickiness: 1,
-            className: 'line-Breakpoint',
-            linesDecorationsClassName: 'glyph-Breakpoint',
-            glyphMarginHoverMessage: {
-              value: message
-            }
+            glyphMarginClassName: breakpoint.disabled
+              ? 'breakpoint-glyph--disabled'
+              : 'breakpoint-glyph'
+          }
+        };
+      });
+    if (currentBreakpoint) {
+      editor.current.revealLineInCenterIfOutsideViewport(
+        currentBreakpoint.line
+      );
+      breakpointDecorations.push({
+        range: new monaco.Range(
+          currentBreakpoint.line,
+          1,
+          currentBreakpoint.line,
+          1
+        ),
+        options: {
+          isWholeLine: true,
+          stickiness: 1,
+          className: 'line-Breakpoint',
+          linesDecorationsClassName: 'breakpoint-glyph--active',
+          glyphMarginHoverMessage: {
+            value: currentBreakpoint.message
           }
         }
-      ]
+      });
+    }
+
+    const oldDecorations = editor.current.deltaDecorations(
+      [],
+      breakpointDecorations
     );
     return () => {
       editor.current.deltaDecorations(oldDecorations, []);
     };
-  }, [editor, activeBreakPoint]);
-  */
-
-  useEffect(() => {
-    if (!openSelection) return;
-    let { selection } = openSelection;
-    if (selection) {
-      if (
-        typeof selection.endLineNumber === 'number' &&
-        typeof selection.endColumn === 'number'
-      ) {
-        editor.current.setSelection(selection);
-        editor.current.revealRangeInCenter(selection, 1 /* Immediate */);
-      } else {
-        var pos = {
-          lineNumber: selection.startLineNumber,
-          column: selection.startColumn
-        };
-        editor.current.setPosition(pos);
-        editor.current.revealPositionInCenter(pos, 1 /* Immediate */);
-      }
-    }
-  }, [editor, openSelection]);
+  }, [activeFile, currentBreakpoint, JSON.stringify(breakpoints)]);
 
   return (
     <React.Fragment>
@@ -243,7 +211,7 @@ const Editor: React.FC = () => {
         }}
         style={{ display: activeFile ? 'block' : 'none' }}
       />
-      {activeFile === undefined ? <WelcomeScreen /> : null}
+      {activeFile === null ? <WelcomeScreen /> : null}
     </React.Fragment>
   );
 };

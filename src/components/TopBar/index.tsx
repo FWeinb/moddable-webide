@@ -31,7 +31,7 @@ const EditorTopBar: React.FunctionComponent = () => {
   } = useOvermind();
 
   const compilerNotReady = state !== CompilerState.READY;
-  let connectionColor = undefined;
+  let connectionColor = null;
   switch (connectionState) {
     case ConnectionState.DISCONNECTED:
       connectionColor = 'rgba(255,255,255,0.3)';

@@ -35,7 +35,7 @@ const DebugButton: React.FC = () => {
     actions: { setActiveSidebarView }
   } = useOvermind();
 
-  let debugIndicatorColor = undefined;
+  let debugIndicatorColor = null;
   switch (DeviceState.debug.state) {
     case DebugState.CONNECTED:
       debugIndicatorColor = '#3ebf44';

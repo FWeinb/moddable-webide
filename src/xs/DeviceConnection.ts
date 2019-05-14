@@ -291,6 +291,7 @@ export class DeviceConnection extends Emittery.Typed<DeviceDebuggerEvents> {
   constructor(uri: string) {
     super();
     this.uri = uri;
+    this.connectionAttempt = 0;
     this.parser = new DOMParser();
     this.deferredConnect = createDeferred();
   }
@@ -310,18 +311,21 @@ export class DeviceConnection extends Emittery.Typed<DeviceDebuggerEvents> {
       this.socket.onerror = undefined;
       this.socket.onmessage = undefined;
     }
-    this.socket = new WebSocket(this.uri, ['x-xsbug']);
-    this.socket.binaryType = 'arraybuffer';
-    this.socket.onopen = this._onOpen.bind(this);
-    this.socket.onerror = this._onError.bind(this);
-    this.socket.onclose = this._onClose.bind(this);
-    this.socket.onmessage = this._onMessage.bind(this);
-    this.connectionAttempt++;
+    try {
+      this.connectionAttempt++;
+      this.socket = new WebSocket(this.uri, ['x-xsbug']);
+      this.socket.binaryType = 'arraybuffer';
+      this.socket.onopen = this._onOpen.bind(this);
+      this.socket.onerror = this._onError.bind(this);
+      this.socket.onclose = this._onClose.bind(this);
+      this.socket.onmessage = this._onMessage.bind(this);
+    } catch (e) {}
   }
 
   public close() {
     clearTimeout(this.retryTimer);
     if (this.socket) {
+      this.connectionAttempt = 0;
       this.socket.close();
     }
   }
@@ -332,12 +336,14 @@ export class DeviceConnection extends Emittery.Typed<DeviceDebuggerEvents> {
   }
 
   private _onError(e: Event): any {
+    console.log(e, this.connectionAttempt);
     if (this.connectionAttempt <= 10) {
+      clearTimeout(this.retryTimer);
       this.retryTimer = setTimeout(() => {
         this.tryToConnect();
       }, 1000);
     } else {
-      this.deferredConnect.reject(e);
+      this.deferredConnect.reject(new Error('Connection error'));
     }
   }
   private _onClose(e: Event): any {}

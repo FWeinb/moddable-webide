@@ -41,7 +41,7 @@ export const installMod: Action<Uint8Array> = pipe(
 
 export const debugRestart: Action = pipe(
   mutate(async ({ state, effects }) => {
-    state.Editor.activeBreakPoint = null;
+    state.Editor.currentBreakpoint = null;
     state.Device.debug.activeBreak = null;
     effects.Device.connection.doRestart();
   }),
@@ -71,7 +71,7 @@ export const addBreakpoint: Action<EditorBreakpoint> = (
 };
 
 export const debugGo: Action = ({ state, effects }) => {
-  state.Editor.activeBreakPoint = null;
+  state.Editor.currentBreakpoint = null;
   state.Device.debug.activeBreak = null;
   effects.Device.connection.doGo();
 };

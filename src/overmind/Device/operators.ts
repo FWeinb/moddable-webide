@@ -32,10 +32,12 @@ export const syncBreakpoints: Operator<EditorBreakpoint[]> = run(
   ({ state, effects }, breakpoints) => {
     effects.Device.connection &&
       effects.Device.connection.doSetAllBreakpoints(
-        breakpoints.map(breakpoint => ({
-          path: getDevicePath(state.Storage, breakpoint.fileId),
-          line: breakpoint.line
-        }))
+        breakpoints
+          .filter(breakpoint => !breakpoint.disabled)
+          .map(breakpoint => ({
+            path: getDevicePath(state.Storage, breakpoint.fileId),
+            line: breakpoint.line
+          }))
       );
   }
 );
@@ -125,7 +127,6 @@ export const debugInstrumentSample: Operator<
 
 export const debugFrames: Operator<XsbugFramesMessage> = mutate(
   ({ state }, msg) => {
-    console.log(msg);
     state.Device.debug.frames.calls = msg.value.frames;
   }
 );
@@ -161,12 +162,11 @@ export const debugBreak: Operator<XsbugBreakMessage> = mutate(
 
     const fileId = getIdByPath(state.Storage, path.substring(1));
     if (fileId) {
-      actions.Editor.addBreakpoint({
+      state.Editor.currentBreakpoint = {
         fileId,
         line,
-        message,
-        active: true
-      });
+        message
+      };
       actions.Editor.openFile(fileId);
     }
 

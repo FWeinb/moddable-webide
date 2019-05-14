@@ -3,9 +3,6 @@ import 'monaco-editor/esm/vs/language/typescript/monaco.contribution';
 import 'monaco-editor/esm/vs/basic-languages/javascript/javascript.contribution';
 
 import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
-import { StandaloneCodeEditorServiceImpl } from 'monaco-editor/esm/vs/editor/standalone/browser/standaloneCodeServiceImpl';
-import { SimpleEditorModelResolverService } from 'monaco-editor/esm/vs/editor/standalone/browser/simpleServices';
-import { overmind } from '../../overmind';
 
 declare global {
   interface Window {
@@ -23,22 +20,6 @@ self.MonacoEnvironment = {
     }
     return './editor.worker.bundle.js';
   }
-};
-SimpleEditorModelResolverService.prototype.findModel = StandaloneCodeEditorServiceImpl.prototype.findModel = function(
-  editor,
-  resource
-) {
-  return monaco.editor
-    .getModels()
-    .find(model => model.uri.toString() === resource.toString());
-};
-
-StandaloneCodeEditorServiceImpl.prototype.openCodeEditor = async (
-  input,
-  source,
-  sideBySide
-) => {
-  overmind.actions.Editor.openFileByResourceInput(input);
 };
 
 monaco.languages.json.jsonDefaults.setDiagnosticsOptions({

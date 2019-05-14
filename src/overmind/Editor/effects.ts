@@ -32,6 +32,10 @@ export const getModel = (
   return model;
 };
 
+export const removeModel = (model: monaco.editor.ITextModel) => {
+  model.dispose();
+};
+
 export const disposeAllModels = () => {
   return monaco.editor.getModels().forEach(model => model.dispose());
 };

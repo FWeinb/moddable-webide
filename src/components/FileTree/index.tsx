@@ -8,7 +8,11 @@ import React, {
   PropsWithChildren,
   useRef
 } from 'react';
-import { useDropzone } from 'react-dropzone';
+
+import { __EXPERIMENTAL_DND_HOOKS_THAT_MAY_CHANGE_AND_BREAK_MY_BUILD__ as dnd } from 'react-dnd';
+const { useDrop } = dnd;
+
+import { NativeTypes } from 'react-dnd-html5-backend';
 
 import { useOvermind } from '../../overmind';
 import { XFile, Directory, XStorage } from '../../overmind/Storage/state';
@@ -22,6 +26,26 @@ import { EditorFile } from '../../overmind/Editor/state';
 import { isFilePartOf } from '../../overmind/Storage/utils';
 
 import { NewFileButton, NewFolderButton, DeleteButton } from './Buttons';
+
+const useFileDropzone = (parentDirId: string) => {
+  const {
+    actions: {
+      Storage: { addDroppedFiles }
+    }
+  } = useOvermind();
+  return useDrop({
+    accept: [NativeTypes.FILE],
+    drop(item, monitor) {
+      // @ts-ignore
+      item.dirContent.then(files => {
+        addDroppedFiles({ parent: parentDirId, files });
+      });
+    },
+    collect: monitor => ({
+      isOver: monitor.isOver({ shallow: true })
+    })
+  });
+};
 
 const useFocus = (domReference: React.RefObject<HTMLElement>) => {
   const [focused, setFocused] = useState(false);
@@ -209,7 +233,7 @@ const FileItem: React.FC<FileItemProp> = ({ file, hover }) => {
   );
 };
 
-const activeDrag = css`
+const activeDragCss = css`
   ::after {
     content: '';
     position: absolute;
@@ -240,6 +264,7 @@ const DirectoryContainer: React.FC<DirectoryContainerProps> = ({
   children
 }) => {
   const [open, setOpen] = useState(false);
+
   useEffect(() => {
     if (activeFile) {
       if (isFilePartOf(Storage, parentDirId, activeFile.id)) {
@@ -247,8 +272,14 @@ const DirectoryContainer: React.FC<DirectoryContainerProps> = ({
       }
     }
   }, [activeFile]);
+
+  const [{ isOver }, dropRef] = useFileDropzone(parentDirId);
+
   return (
-    <React.Fragment>
+    <div
+      ref={dropRef}
+      css={[{ position: 'relative' }, isOver && activeDragCss]}
+    >
       <ItemContainer focused={focused} depth={depth} selected={false}>
         {({ hover }) => (
           <DirItem
@@ -261,7 +292,7 @@ const DirectoryContainer: React.FC<DirectoryContainerProps> = ({
         )}
       </ItemContainer>
       {open && children}
-    </React.Fragment>
+    </div>
   );
 };
 
@@ -298,8 +329,8 @@ const Dir: React.FC<DirectoryProps> = ({
       {...props}
     >
       {Object.values(Storage.directories)
-        .sort((a, b) => a.name.localeCompare(b.name))
         .filter(dir => dir.parent === parentDirId)
+        .sort((a, b) => a.name.localeCompare(b.name))
         .map(dir => {
           return (
             <DirectoryContainer
@@ -324,6 +355,7 @@ const Dir: React.FC<DirectoryProps> = ({
         })}
       {Object.values(Storage.files)
         .filter(file => file.parent === parentDirId)
+        .sort((a, b) => a.name.localeCompare(b.name))
         .map(file => (
           <ItemContainer
             focused={focused}
@@ -345,7 +377,7 @@ const FileTree: React.FunctionComponent = () => {
       Editor: { activeFile }
     },
     actions: {
-      Storage: { addDroppedFiles, createNewFile, createNewFolder },
+      Storage: { createNewFile, createNewFolder },
       askRemoveProject
     }
   } = useOvermind();
@@ -353,16 +385,8 @@ const FileTree: React.FunctionComponent = () => {
   const domRef = useRef<HTMLElement>();
   const focused = useFocus(domRef);
   const [hover, setHover] = useState(false);
-  const onDrop = useCallback(async (acceptedFiles: File[]) => {
-    addDroppedFiles(acceptedFiles);
-  }, []);
 
-  const { getRootProps, isDragActive } = useDropzone({
-    onDrop,
-    accept: ['.js', '.json', '.png', '.gif'],
-    noKeyboard: true,
-    noDragEventsBubbling: true
-  });
+  const [{ isOver }, dropRef] = useFileDropzone(undefined);
 
   return (
     <section
@@ -413,10 +437,7 @@ const FileTree: React.FunctionComponent = () => {
           />
         </section>
       </header>
-      <div
-        css={[{ height: '100%' }, isDragActive && activeDrag]}
-        {...getRootProps()}
-      >
+      <div ref={dropRef} css={[{ height: '100%' }, isOver && activeDragCss]}>
         <Dir
           focused={focused}
           activeFile={activeFile}
@@ -427,5 +448,4 @@ const FileTree: React.FunctionComponent = () => {
     </section>
   );
 };
-
 export default FileTree;
