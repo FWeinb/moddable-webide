@@ -12,11 +12,11 @@ body {
   overflow: hidden;
   color: white;
 }
-*::selection {
+*:not(input):not(textarea)::selection {
   background: transparent;
 }
 
-*::-moz-selection {
+*:not(input):not(textarea)::-moz-selection {
   background: transparent;
 }
 

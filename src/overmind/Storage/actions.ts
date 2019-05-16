@@ -4,7 +4,6 @@ import * as o from './operators';
 import { generateNodeId } from './utils';
 import { XStorage } from './state';
 import { DroppedFiles } from './types';
-import { async } from 'q';
 
 export const openProject: Action<string> = pipe(
   mutate(async ({ state, actions }, projectName) => {
@@ -76,6 +75,16 @@ export const createNewFolder: Action<string> = pipe(
   o.persist
 );
 
+export const renameFile: Action<{ id: string; name: string }> = pipe(
+  mutate(({ state }, { id, name }) => {
+    const file = state.Storage.files[id];
+    if (file) {
+      file.name = name;
+    }
+  }),
+  o.persist
+);
+
 export const updateFile: Action<{ id: string; content: string }> = pipe(
   mutate(({ state }, fileUpdate) => {
     const file = state.Storage.files[fileUpdate.id];
@@ -89,6 +98,16 @@ export const updateFile: Action<{ id: string; content: string }> = pipe(
 export const addDroppedFiles: Action<DroppedFiles> = pipe(
   o.readDroppedFiles,
   o.mergeFilesIntoFiles,
+  o.persist
+);
+
+export const renameDir: Action<{ id: string; name: string }> = pipe(
+  mutate(({ state }, { id, name }) => {
+    const dir = state.Storage.directories[id];
+    if (dir) {
+      dir.name = name;
+    }
+  }),
   o.persist
 );
 

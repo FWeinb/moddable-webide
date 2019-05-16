@@ -84,6 +84,10 @@ const EditorTopBar: React.FunctionComponent = () => {
           type="text"
           value={host}
           placeholder="Hostname/IP"
+          css={{
+            height: '2.5em',
+            padding: '0 5px'
+          }}
         />
         <Button
           onClick={compileAndUpload}

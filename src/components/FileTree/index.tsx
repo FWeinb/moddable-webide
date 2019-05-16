@@ -26,6 +26,7 @@ import { EditorFile } from '../../overmind/Editor/state';
 import { isFilePartOf } from '../../overmind/Storage/utils';
 
 import { NewFileButton, NewFolderButton, DeleteButton } from './Buttons';
+import Input from '../Input';
 
 const useFileDropzone = (parentDirId: string) => {
   const {
@@ -64,6 +65,39 @@ const useFocus = (domReference: React.RefObject<HTMLElement>) => {
     };
   }, [domReference]);
   return focused;
+};
+
+const Renameable: React.FC<{
+  text: string;
+  onCommit: (newText: string) => void;
+}> = ({ text, onCommit }) => {
+  const [renamedText, setRenamedText] = useState(text);
+  const [renaming, setRenaming] = useState();
+  return (
+    <span
+      onDoubleClick={e => (e.preventDefault(), setRenaming(true))}
+      onBlur={e => setRenaming(false)}
+      onKeyUp={e =>
+        e.keyCode === 13 && (onCommit(renamedText), setRenaming(false))
+      }
+    >
+      {renaming ? (
+        <Input
+          autoFocus
+          type="text"
+          value={renamedText}
+          onChange={e => setRenamedText(e.target.value)}
+          spellCheck={false}
+          css={{
+            color: 'var(--color-text)',
+            height: '100%'
+          }}
+        />
+      ) : (
+        text
+      )}
+    </span>
+  );
 };
 
 type ItemConainerProps = {
@@ -128,7 +162,7 @@ const DirItem: React.FC<DirItemProp> = ({
 }) => {
   const {
     actions: {
-      Storage: { createNewFile, createNewFolder, removeDir }
+      Storage: { createNewFile, createNewFolder, removeDir, renameDir }
     }
   } = useOvermind();
   return (
@@ -152,7 +186,10 @@ const DirItem: React.FC<DirItemProp> = ({
           textOverflow: 'ellipsis'
         }}
       >
-        {dir.name}
+        <Renameable
+          onCommit={name => renameDir({ id: dir.id, name })}
+          text={dir.name}
+        />
       </span>
       <section
         css={{
@@ -197,7 +234,7 @@ const FileItem: React.FC<FileItemProp> = ({ file, hover }) => {
   const {
     actions: {
       Editor: { openFile },
-      Storage: { removeFile }
+      Storage: { removeFile, renameFile }
     }
   } = useOvermind();
   return (
@@ -219,7 +256,10 @@ const FileItem: React.FC<FileItemProp> = ({ file, hover }) => {
           textOverflow: 'ellipsis'
         }}
       >
-        {file.name}
+        <Renameable
+          onCommit={name => renameFile({ id: file.id, name })}
+          text={file.name}
+        />
       </span>
       <section
         css={{ marginLeft: 'auto', fontWeight: 'bold' }}

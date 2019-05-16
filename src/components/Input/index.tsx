@@ -4,15 +4,14 @@ import { jsx } from '@emotion/core';
 import React from 'react';
 
 const Input: React.FunctionComponent<
-  React.InputHTMLAttributes<HTMLInputElement>
-> = props => {
+  { css: any } & React.InputHTMLAttributes<HTMLInputElement>
+> = ({ css, ...props }) => {
   return (
     <input
       {...props}
       css={{
+        ...css,
         border: '0',
-        height: '2.5em',
-        padding: '0 5px',
         backgroundColor: 'var(--color-lightest)',
         color: 'var(--color-text-muted)',
         caretColor: 'var(--color-text-muted)',
