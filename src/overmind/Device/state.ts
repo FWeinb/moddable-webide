@@ -1,5 +1,4 @@
 import {
-  DeviceConnection,
   XsbugLocalMessage,
   XsbugGlobalMessage,
   XsbugGrammerMessage,
@@ -12,17 +11,22 @@ export type DeviceInstrument = {
   indices: string[];
 };
 
+export enum ConnectionType {
+  USB = 'USB',
+  WIFI = 'WIFI'
+}
+
 export enum ConnectionState {
-  DISCONNECTED,
-  CONNECTING,
-  CONNECTED,
-  ERROR
+  DISCONNECTED = 'DISCONNECTED',
+  CONNECTING = 'CONNECTING',
+  CONNECTED = 'CONNECTED',
+  ERROR = 'ERROR'
 }
 
 export enum DebugState {
-  CONNECTED,
-  CONNECTING,
-  DISCONNECTED
+  CONNECTED = 'CONNECTED',
+  CONNECTING = 'CONNECTING',
+  DISCONNECTED = 'DISCONNECTED'
 }
 
 export type DebugBreak = {
@@ -47,12 +51,16 @@ export type Debug = {
 
 export type Device = {
   host: string;
+  baudRate: number;
+  connectionType: ConnectionType;
   connectionState: ConnectionState;
   debug: Debug;
 };
 
 const state: Device = {
   host: 'runmod.local',
+  baudRate: 921600,
+  connectionType: ConnectionType.USB,
   connectionState: ConnectionState.DISCONNECTED,
   debug: {
     state: DebugState.DISCONNECTED,

@@ -88,3 +88,14 @@ body,
   height: 2px;
   width: 100%;
 }
+
+/* Select */
+
+select {
+  color: white;
+  background: var(--color-dark);
+}
+
+select > option {
+  cursor: pointer;
+}

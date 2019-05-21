@@ -31,6 +31,7 @@
     "@emotion/core": "^10.0.10",
     "@types/react": "^16.8.17",
     "@types/react-dom": "^16.8.4",
+    "@types/w3c-web-usb": "^1.0.3",
     "autoprefixer": "^9.5.1",
     "babel-loader": "^8.0.5",
     "babel-plugin-emotion": "^10.0.9",

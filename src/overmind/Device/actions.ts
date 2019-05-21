@@ -1,42 +1,89 @@
-import { pipe, mutate, map, run, Action, fork } from 'overmind';
+import {
+  pipe,
+  mutate,
+  run,
+  when,
+  Action,
+  Operator,
+  noop,
+  action,
+  wait
+} from 'overmind';
 import * as o from './operators';
 
 import { XsbugMessageType, XsbugMessage } from '../../xs/DeviceConnection';
 import { EditorBreakpoint } from '../Editor/state';
-import { getPath, getDevicePath } from '../Storage/utils';
-import state from './state';
+import { getDevicePath } from '../Storage/utils';
+import { ConnectionType, ConnectionState, DebugState, Debug } from './state';
 
-export const setDeviceHostName: Action<string> = ({ state }, hostName) => {
+export const setConnectionType: Action<ConnectionType> = pipe(
+  mutate(({ state }, connectionType) => {
+    state.Device.connectionType = connectionType;
+  }),
+  when(
+    ({ state }) =>
+      state.Device.connectionState !== ConnectionState.DISCONNECTED,
+    {
+      true: o.disconnect,
+      false: noop()
+    }
+  )
+);
+
+export const setBaudRate: Action<number> = ({ state }, baudRate) => {
+  state.Device.baudRate = baudRate;
+};
+
+export const setHostName: Action<string> = ({ state }, hostName) => {
   state.Device.host = hostName;
 };
 
-export const connectDebugger: Action = o.ensureConnection;
-
-export const handleConnectionEvents: Action<XsbugMessage<any>> = pipe(
-  o.forkConnectionEvent({
-    [XsbugMessageType.Login]: o.debugLogin,
-    [XsbugMessageType.Frames]: o.debugFrames,
-    [XsbugMessageType.Local]: o.debugLocal,
-    [XsbugMessageType.Global]: o.debugGlobal,
-    [XsbugMessageType.Grammer]: o.debugGrammer,
-    [XsbugMessageType.Break]: o.debugBreak,
-    [XsbugMessageType.Log]: o.debugLog,
-    [XsbugMessageType.InstrumentSample]: o.debugInstrumentSample,
-    [XsbugMessageType.Instrument]: o.debugInstrument
-  })
+export const connectDebugger: Action = pipe(
+  o.ensureConnection,
+  o.connectWithDebugger
 );
+
+export const handleConnectionEvents: Operator<
+  XsbugMessage<any>
+> = o.forkConnectionEvent({
+  [XsbugMessageType.Login]: o.debugLogin,
+  [XsbugMessageType.Frames]: o.debugFrames,
+  [XsbugMessageType.Local]: o.debugLocal,
+  [XsbugMessageType.Global]: o.debugGlobal,
+  [XsbugMessageType.Grammer]: o.debugGrammer,
+  [XsbugMessageType.Break]: o.debugBreak,
+  [XsbugMessageType.Log]: o.debugLog,
+  [XsbugMessageType.InstrumentSample]: o.debugInstrumentSample,
+  [XsbugMessageType.Instrument]: o.debugInstrument
+});
+
+export const setConnectionState: Action<ConnectionState> = (
+  { state },
+  connectionState
+) => {
+  state.Device.connectionState = connectionState;
+};
+export const setDebugState: Action<DebugState> = ({ state }, debugState) => {
+  state.Device.debug.state = debugState;
+};
 
 export const installMod: Action<Uint8Array> = pipe(
   o.ensureConnection,
-  mutate(({ actions, effects }, payload: Uint8Array) => {
-    effects.Device.connection.doSetPreference('config', 'when', 'debug');
+  o.connectWithoutDebugger,
+  mutate(async ({ actions, effects, state }, payload: Uint8Array) => {
+    const configWhen =
+      state.Device.connectionType === ConnectionType.USB ? 'boot' : 'debug';
+    effects.Device.connection.doSetPreference('config', 'when', configWhen);
     actions.Log.addMessage('Uploading...');
-    effects.Device.connection.doInstall(0, payload);
+    effects.Device.connection.doStep();
+    await effects.Device.connection.doInstall(payload);
     actions.Log.addMessage('...done');
     effects.Device.connection.doRestart();
   }),
   o.disconnect,
-  o.connectAfterRestart
+  o.connectAfterRestart,
+  o.connectWithDebugger,
+  o.catchConnectionError
 );
 
 export const debugRestart: Action = pipe(
@@ -46,7 +93,8 @@ export const debugRestart: Action = pipe(
     effects.Device.connection.doRestart();
   }),
   o.disconnect,
-  o.connectAfterRestart
+  o.connectAfterRestart,
+  o.connectWithDebugger
 );
 
 export const clearBreakpoint: Action<EditorBreakpoint> = (

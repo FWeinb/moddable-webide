@@ -11,20 +11,81 @@ import Button from '../Button';
 
 import { useOvermind } from '../../overmind';
 import { CompilerState } from '../../overmind/Compiler/state';
-import { ConnectionState, DebugState } from '../../overmind/Device/state';
+import {
+  ConnectionState,
+  DebugState,
+  ConnectionType
+} from '../../overmind/Device/state';
 
-const EditorTopBar: React.FunctionComponent = () => {
+const UsbSettings: React.FC = () => {
   const {
     actions: {
-      Device: { setDeviceHostName, connectDebugger },
+      Device: { setBaudRate }
+    },
+    state: {
+      Device: { baudRate }
+    }
+  } = useOvermind();
+  return (
+    <select
+      onChange={e => setBaudRate(parseInt(e.target.value, 10))}
+      className={'monaco-select-box'}
+      css={{
+        marginRight: '.5em'
+      }}
+    >
+      <option value="921600">ESP8266 (921,600)</option>
+      <option value="460800">ESP32 (460,800)</option>
+    </select>
+  );
+};
+
+const WifiSettings: React.FC = () => {
+  const {
+    actions: {
+      Device: { setHostName }
+    },
+    state: {
+      Device: { host }
+    }
+  } = useOvermind();
+  return (
+    <Input
+      onChange={e => setHostName(e.target.value)}
+      type="text"
+      value={host}
+      placeholder="Hostname/IP"
+      css={{
+        height: '2.5em',
+        padding: '0 5px',
+        marginRight: '.5em'
+      }}
+    />
+  );
+};
+const renderSettingsForConnectionType = (type: ConnectionType) => {
+  switch (type) {
+    case ConnectionType.USB:
+      return <UsbSettings />;
+    case ConnectionType.WIFI:
+      return <WifiSettings />;
+    default:
+      return <div>Unkown Settings</div>;
+  }
+};
+
+const TopBar: React.FC = () => {
+  const {
+    actions: {
+      Device: { setConnectionType, connectDebugger },
       Compiler: { compileAndUpload },
       askImportGist
     },
     state: {
       Device: {
+        connectionType,
         connectionState,
-        debug: { state: debugState },
-        host
+        debug: { state: debugState }
       },
       Compiler: { state }
     }
@@ -72,23 +133,20 @@ const EditorTopBar: React.FunctionComponent = () => {
         >
           <GistIcon />
         </Button>
-        <span
-          title="Connection State"
-          css={{ marginRight: '7px' }}
-          style={{ color: connectionColor }}
+        <select
+          onChange={e =>
+            setConnectionType(e.currentTarget.value as ConnectionType)
+          }
+          value={connectionType}
+          css={{ marginRight: '.5em' }}
         >
+          <option value="USB">USB</option>
+          <option value="WIFI">WiFi</option>
+        </select>
+        {renderSettingsForConnectionType(connectionType)}
+        <span title="Connection State" style={{ color: connectionColor }}>
           ●
         </span>
-        <Input
-          onChange={e => setDeviceHostName(e.target.value)}
-          type="text"
-          value={host}
-          placeholder="Hostname/IP"
-          css={{
-            height: '2.5em',
-            padding: '0 5px'
-          }}
-        />
         <Button
           onClick={compileAndUpload}
           disabled={compilerNotReady}
@@ -115,4 +173,4 @@ const EditorTopBar: React.FunctionComponent = () => {
   );
 };
 
-export default EditorTopBar;
+export default TopBar;

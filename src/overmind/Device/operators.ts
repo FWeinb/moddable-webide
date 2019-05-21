@@ -8,9 +8,10 @@ import {
   fork,
   forEach,
   noop,
-  map
+  map,
+  catchError
 } from 'overmind';
-import { ConnectionState, DebugState } from './state';
+import { ConnectionState, DebugState, ConnectionType } from './state';
 import { cleanInstrumentData } from './utils';
 import { SidebarView } from '../rootState';
 import { getIdByPath, getPath, getDevicePath } from '../Storage/utils';
@@ -26,21 +27,18 @@ import {
   XsbugGrammerMessage,
   XsbugLogMessage
 } from '../../xs/DeviceConnection';
-import { EditorBreakpoint } from '../Editor/state';
 
-export const syncBreakpoints: Operator<EditorBreakpoint[]> = run(
-  ({ state, effects }, breakpoints) => {
-    effects.Device.connection &&
-      effects.Device.connection.doSetAllBreakpoints(
-        breakpoints
-          .filter(breakpoint => !breakpoint.disabled)
-          .map(breakpoint => ({
-            path: getDevicePath(state.Storage, breakpoint.fileId),
-            line: breakpoint.line
-          }))
-      );
-  }
-);
+export const syncBreakpoints: Operator = run(({ state, effects }) => {
+  effects.Device.connection &&
+    effects.Device.connection.doSetAllBreakpoints(
+      state.Editor.breakpoints
+        .filter(breakpoint => !breakpoint.disabled)
+        .map(breakpoint => ({
+          path: getDevicePath(state.Storage, breakpoint.fileId),
+          line: breakpoint.line
+        }))
+    );
+});
 
 export const forkConnectionEvent: (paths: {
   [key: string]: Operator<XsbugMessage<any>, any>;
@@ -53,35 +51,66 @@ export const setActiveSidebarToDebug: Operator = run(({ state, actions }) => {
   }
 });
 
-export const ensureConnection: Operator<any> = pipe(
-  when(({ effects }) => effects.Device.connection !== null, {
+export const ensureConnection: Operator<any> = when(
+  ({ effects }) => effects.Device.connection !== null,
+  {
     // Connected
     true: noop(),
     // Disconnected
-    false: pipe(
-      mutate(async ({ state, effects, actions }) => {
-        state.Device.debug.state = DebugState.CONNECTING;
-        state.Device.connectionState = ConnectionState.CONNECTING;
-        const connection = effects.Device.createConnection(
-          `ws://${state.Device.host}:8080`
-        );
-        connection.onAny((_, event) => {
-          actions.Device.handleConnectionEvents(event);
-        });
-        try {
-          await effects.Device.connection.connect();
-          state.Device.connectionState = ConnectionState.CONNECTED;
-        } catch (e) {
-          state.Device.connectionState = ConnectionState.ERROR;
-          actions.Log.addErrorMessage(e.toString());
-          throw e;
-        }
-      }),
-      map(({ state }) => state.Editor.breakpoints),
-      syncBreakpoints,
-      setActiveSidebarToDebug
-    )
-  })
+    false: mutate(({ state, effects, actions }) => {
+      setTimeout(() => {
+        actions.Device.setConnectionState(ConnectionState.CONNECTING);
+      });
+      switch (state.Device.connectionType) {
+        case ConnectionType.WIFI:
+          effects.Device.createWifiConnection(`ws://${state.Device.host}:8080`);
+          break;
+        case ConnectionType.USB:
+          effects.Device.createUsbConnection(state.Device.baudRate);
+          break;
+      }
+    })
+  }
+);
+export const connectWithoutDebugger: Operator<any> = mutate(
+  async ({ state, effects }) => {
+    await effects.Device.connection.connect();
+    state.Device.connectionState = ConnectionState.CONNECTED;
+  }
+);
+
+export const connectWithDebugger: Operator<any> = pipe(
+  mutate(async ({ effects, state, actions }) => {
+    setTimeout(() => {
+      actions.Device.setConnectionState(ConnectionState.CONNECTING);
+      actions.Device.setDebugState(DebugState.CONNECTING);
+    });
+    effects.Device.connection.onAny((_, event) => {
+      actions.Device.handleConnectionEvents(event);
+    });
+    await effects.Device.connection.connect();
+    actions.Device.setConnectionState(ConnectionState.CONNECTED);
+  }),
+  syncBreakpoints,
+  setActiveSidebarToDebug
+);
+
+export const catchConnectionError: Operator = catchError(
+  ({ state, actions }, e: any) => {
+    state.Device.connectionState = ConnectionState.ERROR;
+    state.Device.debug.state = DebugState.DISCONNECTED;
+    actions.Log.addErrorMessage(e.toString());
+    if (e.NETWORK_ERR === e.code) {
+      actions.Log.addErrorMessage(
+        ' ** Looks like you need to uninstall the driver **'
+      );
+    }
+    if (navigator.usb === undefined) {
+      actions.Log.addErrorMessage(
+        ' ** Looks like WebUSB is not supported, or you are on an unsafe connection **'
+      );
+    }
+  }
 );
 
 export const connectAfterRestart: Operator = pipe(
@@ -89,10 +118,10 @@ export const connectAfterRestart: Operator = pipe(
   ensureConnection
 );
 
-export const disconnect: Operator = mutate(({ state, effects }) => {
+export const disconnect: Operator = mutate(async ({ state, effects }) => {
   state.Device.debug.state = DebugState.DISCONNECTED;
   state.Device.connectionState = ConnectionState.DISCONNECTED;
-  effects.Device.closeConnection();
+  await effects.Device.closeConnection();
 });
 
 // Debug events:
