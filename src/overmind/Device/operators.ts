@@ -25,7 +25,9 @@ import {
   XsbugGlobalMessage,
   XsbugBreakMessage,
   XsbugGrammerMessage,
-  XsbugLogMessage
+  XsbugLogMessage,
+  ConnectionEvent,
+  ConnectionErrorMessage
 } from '../../xs/DeviceConnection';
 
 export const syncBreakpoints: Operator = run(({ state, effects }) => {
@@ -41,9 +43,9 @@ export const syncBreakpoints: Operator = run(({ state, effects }) => {
 });
 
 export const forkConnectionEvent: (paths: {
-  [key: string]: Operator<XsbugMessage<any>, any>;
-}) => Operator<XsbugMessage<any>> = paths =>
-  fork((_, value) => value.type, paths) as Operator<XsbugMessage<any>>;
+  [key: string]: Operator<ConnectionEvent<any, any>, any>;
+}) => Operator<ConnectionEvent<any, any>> = paths =>
+  fork((_, value) => value.type, paths) as Operator<ConnectionEvent<any, any>>;
 
 export const setActiveSidebarToDebug: Operator = run(({ state, actions }) => {
   if (state.selectedSidebarView !== SidebarView.Debug) {
@@ -51,25 +53,37 @@ export const setActiveSidebarToDebug: Operator = run(({ state, actions }) => {
   }
 });
 
+export const setConnectionState = (newState: ConnectionState) =>
+  mutate(({ state }) => {
+    state.Device.connectionState = newState;
+  });
+
+export const setDebugState = (newState: DebugState) =>
+  mutate(({ state }) => {
+    state.Device.debug.state = newState;
+  });
+
 export const ensureConnection: Operator<any> = when(
   ({ effects }) => effects.Device.connection !== null,
   {
     // Connected
     true: noop(),
     // Disconnected
-    false: mutate(({ state, effects, actions }) => {
-      setTimeout(() => {
-        actions.Device.setConnectionState(ConnectionState.CONNECTING);
-      });
-      switch (state.Device.connectionType) {
-        case ConnectionType.WIFI:
-          effects.Device.createWifiConnection(`ws://${state.Device.host}:8080`);
-          break;
-        case ConnectionType.USB:
-          effects.Device.createUsbConnection(state.Device.baudRate);
-          break;
-      }
-    })
+    false: pipe(
+      setConnectionState(ConnectionState.CONNECTING),
+      mutate(({ state, effects }) => {
+        switch (state.Device.connectionType) {
+          case ConnectionType.WIFI:
+            effects.Device.createWifiConnection(
+              `ws://${state.Device.host}:8080`
+            );
+            break;
+          case ConnectionType.USB:
+            effects.Device.createUsbConnection(state.Device.baudRate);
+            break;
+        }
+      })
+    )
   }
 );
 export const connectWithoutDebugger: Operator<any> = mutate(
@@ -80,17 +94,14 @@ export const connectWithoutDebugger: Operator<any> = mutate(
 );
 
 export const connectWithDebugger: Operator<any> = pipe(
+  setDebugState(DebugState.CONNECTING),
   mutate(async ({ effects, state, actions }) => {
-    setTimeout(() => {
-      actions.Device.setConnectionState(ConnectionState.CONNECTING);
-      actions.Device.setDebugState(DebugState.CONNECTING);
-    });
     effects.Device.connection.onAny((_, event) => {
       actions.Device.handleConnectionEvents(event);
     });
     await effects.Device.connection.connect();
-    actions.Device.setConnectionState(ConnectionState.CONNECTED);
   }),
+  setConnectionState(ConnectionState.CONNECTED),
   syncBreakpoints,
   setActiveSidebarToDebug
 );
@@ -121,6 +132,7 @@ export const connectAfterRestart: Operator = pipe(
 export const disconnect: Operator = mutate(async ({ state, effects }) => {
   state.Device.debug.state = DebugState.DISCONNECTED;
   state.Device.connectionState = ConnectionState.DISCONNECTED;
+  effects.Device.connection.clearListeners();
   await effects.Device.closeConnection();
 });
 
@@ -211,6 +223,17 @@ export const debugBreak: Operator<XsbugBreakMessage> = mutate(
     }
   }
 );
-export const debugLog: Operator<XsbugLogMessage> = run(({ actions }, msg) => {
-  actions.Log.addMessage(msg.value.log);
-});
+export const debugLog: Operator<XsbugLogMessage> = mutate(
+  ({ actions }, msg) => {
+    // TODO: Fix this in overmind
+    actions.Log.addMessage(msg.value.log);
+  }
+);
+
+export const connectionError: Operator<ConnectionErrorMessage> = pipe(
+  mutate(({ actions }, msg) => {
+    // TODO: Fix this in overmind
+    actions.Log.addErrorMessage(msg.value.message);
+  }),
+  disconnect
+);

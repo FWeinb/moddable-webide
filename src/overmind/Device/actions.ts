@@ -11,7 +11,11 @@ import {
 } from 'overmind';
 import * as o from './operators';
 
-import { XsbugMessageType, XsbugMessage } from '../../xs/DeviceConnection';
+import {
+  XsbugMessageType,
+  ConnectionEvent,
+  DeviceConnectionEventTypes
+} from '../../xs/DeviceConnection';
 import { EditorBreakpoint } from '../Editor/state';
 import { getDevicePath } from '../Storage/utils';
 import { ConnectionType, ConnectionState, DebugState, Debug } from './state';
@@ -44,7 +48,7 @@ export const connectDebugger: Action = pipe(
 );
 
 export const handleConnectionEvents: Operator<
-  XsbugMessage<any>
+  ConnectionEvent<any, any>
 > = o.forkConnectionEvent({
   [XsbugMessageType.Login]: o.debugLogin,
   [XsbugMessageType.Frames]: o.debugFrames,
@@ -54,18 +58,9 @@ export const handleConnectionEvents: Operator<
   [XsbugMessageType.Break]: o.debugBreak,
   [XsbugMessageType.Log]: o.debugLog,
   [XsbugMessageType.InstrumentSample]: o.debugInstrumentSample,
-  [XsbugMessageType.Instrument]: o.debugInstrument
+  [XsbugMessageType.Instrument]: o.debugInstrument,
+  [DeviceConnectionEventTypes.ConnectionError]: o.connectionError
 });
-
-export const setConnectionState: Action<ConnectionState> = (
-  { state },
-  connectionState
-) => {
-  state.Device.connectionState = connectionState;
-};
-export const setDebugState: Action<DebugState> = ({ state }, debugState) => {
-  state.Device.debug.state = debugState;
-};
 
 export const installMod: Action<Uint8Array> = pipe(
   o.ensureConnection,
@@ -73,6 +68,7 @@ export const installMod: Action<Uint8Array> = pipe(
   mutate(async ({ actions, effects, state }, payload: Uint8Array) => {
     const configWhen =
       state.Device.connectionType === ConnectionType.USB ? 'boot' : 'debug';
+
     effects.Device.connection.doSetPreference('config', 'when', configWhen);
     actions.Log.addMessage('Uploading...');
     effects.Device.connection.doStep();

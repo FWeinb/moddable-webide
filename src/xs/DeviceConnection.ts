@@ -1,6 +1,12 @@
 import Emittery from 'emittery';
 
+export type ConnectionEvent<T, V> = {
+  type: T;
+  value: V;
+};
+
 const crlf = String.fromCharCode(13) + String.fromCharCode(10);
+
 export type XsbugProperty = {
   name: string;
   value: string;
@@ -32,10 +38,7 @@ export enum XsbugMessageType {
   Instrument = 'INSTRUMENT'
 }
 
-export type XsbugMessage<T> = {
-  type: XsbugMessageType;
-  value: T;
-};
+export type XsbugMessage<V> = ConnectionEvent<XsbugMessageType, V>;
 
 export type XsbugLoginMessage = XsbugMessage<{
   name: string;
@@ -223,7 +226,16 @@ const XsbugMessageParser = (xml: Document): Array<XsbugMessage<any>> => {
   if ('xsbug' !== root.nodeName) throw new Error('not xsbug xml');
   const messages = [];
   for (let node: Node = root.firstChild; node; node = node.nextSibling) {
-    messages.push(XsbugTypeParser[node.nodeName](node));
+    try {
+      messages.push(XsbugTypeParser[node.nodeName](node));
+    } catch (e) {
+      if (node && node.nodeName === 'parsererror') {
+        throw new Error(
+          `Malformed data encountered, please try reconnecting to the device.`
+        );
+      }
+      throw e;
+    }
   }
   return messages;
 };
@@ -259,6 +271,11 @@ function createDeferred<T>(): Deferred<T> {
   })();
 }
 
+export type DebugBreakpoint = {
+  path: string;
+  line: number;
+};
+
 export type DeviceDebuggerEvents = {
   [XsbugMessageType.Login]: XsbugLoginMessage;
   [XsbugMessageType.Frames]: XsbugFramesMessage;
@@ -271,12 +288,20 @@ export type DeviceDebuggerEvents = {
   [XsbugMessageType.Instrument]: XsbugInstrumentMessage;
 };
 
-export type DebugBreakpoint = {
-  path: string;
-  line: number;
-};
+export enum DeviceConnectionEventTypes {
+  ConnectionError = 'ConnectionError'
+}
 
-export class DeviceConnection extends Emittery.Typed<DeviceDebuggerEvents> {
+export type ConnectionErrorMessage = ConnectionEvent<
+  DeviceConnectionEventTypes.ConnectionError,
+  Error
+>;
+
+export type DeviceConnectionEvents = {
+  [DeviceConnectionEventTypes.ConnectionError]: ConnectionErrorMessage;
+} & DeviceDebuggerEvents;
+
+export class DeviceConnection extends Emittery.Typed<DeviceConnectionEvents> {
   protected parser: DOMParser;
   protected requestID: number;
   protected pending: PendingRequest[];
@@ -553,6 +578,10 @@ export class DeviceConnectionWebSocket extends DeviceConnection {
       }, 1000);
     } else {
       this.deferredConnect.reject(new Error('Connection error'));
+      this.emit(DeviceConnectionEventTypes.ConnectionError, {
+        type: DeviceConnectionEventTypes.ConnectionError,
+        value: new Error('Connection error')
+      });
     }
   }
 
@@ -681,7 +710,10 @@ export class DeviceConnectionUsb extends DeviceConnection {
         this.usbReceive(new Uint8Array(result.data.buffer));
       }
     } catch (e) {
-      console.log('ERROR ' + e);
+      this.emit(DeviceConnectionEventTypes.ConnectionError, {
+        type: DeviceConnectionEventTypes.ConnectionError,
+        value: e
+      });
     }
   }
   async send(data: string | ArrayBuffer) {

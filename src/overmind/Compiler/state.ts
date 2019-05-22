@@ -1,7 +1,7 @@
 export enum CompilerState {
-  LOADING,
-  READY,
-  BUSY
+  LOADING = 'LOADING',
+  READY = 'READY',
+  BUSY = 'BUSY'
 }
 export type Compiler = {
   state: CompilerState;
