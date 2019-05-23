@@ -619,6 +619,9 @@ export class DeviceConnectionUsb extends DeviceConnection {
   private dst: Uint8Array;
 
   private usb: USBDevice;
+  private inEndpoint: number;
+  private outEndpoint: number;
+
   private binary: boolean;
   private binaryLength: number;
   private dstIndex: number;
@@ -656,15 +659,16 @@ export class DeviceConnectionUsb extends DeviceConnection {
     if (devices.length > 0) {
       const usb = devices[0];
       this.usb = usb;
-      let endpoints = usb.configuration.interfaces[0].alternates[0].endpoints;
+      let endpoints =
+        usb.configurations[0].interfaces[0].alternates[0].endpoints;
       let inEndpoint, outEndpoint;
       for (let i = 0; i < endpoints.length; i++) {
-        if ("out" === endpoints[i].direction)
+        if ('out' === endpoints[i].direction)
           outEndpoint = endpoints[i].endpointNumber;
-        if ("in" === endpoints[i].direction)
+        if ('in' === endpoints[i].direction)
           inEndpoint = endpoints[i].endpointNumber;
       }
-      if ((undefined === inEndpoint) || (undefined === outEndpoint))
+      if (undefined === inEndpoint || undefined === outEndpoint)
         throw new Error("can't find endpoints");
       this.inEndpoint = inEndpoint;
       this.outEndpoint = outEndpoint;
@@ -716,9 +720,17 @@ export class DeviceConnectionUsb extends DeviceConnection {
   }
   async readLoop() {
     try {
+      const byteLength = 8192;
+      const results = [
+        this.usb.transferIn(this.inEndpoint, byteLength),
+        this.usb.transferIn(this.inEndpoint, byteLength),
+        this.usb.transferIn(this.inEndpoint, byteLength)
+      ];
+      let phase = 0;
       while (true) {
-        if (this.usb === undefined) return;
-        const result = await this.usb.transferIn(this.inEndpoint, 32 << 10);
+        const result = await results[phase];
+        results[phase] = this.usb.transferIn(this.inEndpoint, byteLength);
+        phase = (phase + 1) % results.length;
         this.usbReceive(new Uint8Array(result.data.buffer));
       }
     } catch (e) {
@@ -808,7 +820,6 @@ export class DeviceConnectionUsb extends DeviceConnection {
           this.onReceive(message);
         } else {
           dst[dstIndex - 2] = 0;
-          //@@        if (offset > 2) fprintf(stderr, "%s\n", self->buffer);
         }
         dstIndex = 0;
       }
