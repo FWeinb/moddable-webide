@@ -240,7 +240,6 @@ const XsbugMessageParser = (xml: Document): Array<XsbugMessage<any>> => {
   return messages;
 };
 
-type InstallCallback = (code: number) => void;
 type ReplyCallback = (code: number, data: ArrayBuffer) => void;
 type PendingRequest = {
   id: number;
@@ -397,6 +396,7 @@ export class DeviceConnection extends Emittery.Typed<DeviceConnectionEvents> {
   }
   doRestart() {
     this.sendBinaryCommand(1);
+    this.reset();
   }
   doSetPreference(domain: String, key: String, value: String) {
     // assumes 7 bit ASCII values
@@ -510,6 +510,7 @@ export class DeviceConnection extends Emittery.Typed<DeviceConnectionEvents> {
   }
 
   public connect() {}
+  public reset() {}
   public async disconnect() {}
   protected send(data: string | ArrayBuffer) {}
 }
@@ -640,10 +641,15 @@ export class DeviceConnectionUsb extends DeviceConnection {
       this.deviceReady.resolve(this);
     });
   }
-  async connect() {
+
+  reset() {
     this.binary = false;
     this.dstIndex = 0;
     this.currentMachine = undefined;
+  }
+
+  async connect() {
+    this.reset();
 
     this.deviceReady = createDeferred<DeviceConnectionUsb>();
 
@@ -652,15 +658,15 @@ export class DeviceConnectionUsb extends DeviceConnection {
 
     this.readLoop();
 
-    return this.deviceReady.promise;
+    await this.deviceReady.promise;
   }
   async getDevice() {
     const devices = await navigator.usb.getDevices();
+
     if (devices.length > 0) {
       const usb = devices[0];
       this.usb = usb;
-      let endpoints =
-        usb.configurations[0].interfaces[0].alternates[0].endpoints;
+      let endpoints = usb.configuration.interfaces[0].alternates[0].endpoints;
       let inEndpoint, outEndpoint;
       for (let i = 0; i < endpoints.length; i++) {
         if ('out' === endpoints[i].direction)
@@ -674,8 +680,7 @@ export class DeviceConnectionUsb extends DeviceConnection {
       this.outEndpoint = outEndpoint;
       return usb;
     }
-    this.usb = await navigator.usb.requestDevice({ filters });
-    return this.usb;
+    return (this.usb = await navigator.usb.requestDevice({ filters }));
   }
   async openDevice() {
     await this.usb.open();
@@ -729,11 +734,15 @@ export class DeviceConnectionUsb extends DeviceConnection {
       let phase = 0;
       while (true) {
         const result = await results[phase];
+        if (this.usb === undefined) return;
         results[phase] = this.usb.transferIn(this.inEndpoint, byteLength);
         phase = (phase + 1) % results.length;
         this.usbReceive(new Uint8Array(result.data.buffer));
       }
     } catch (e) {
+      if (e.message === 'The transfer was cancelled.') {
+        return;
+      }
       this.emit(DeviceConnectionEventTypes.ConnectionError, {
         type: DeviceConnectionEventTypes.ConnectionError,
         value: e
