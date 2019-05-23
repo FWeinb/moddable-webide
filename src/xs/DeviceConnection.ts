@@ -656,6 +656,18 @@ export class DeviceConnectionUsb extends DeviceConnection {
     if (devices.length > 0) {
       const usb = devices[0];
       this.usb = usb;
+      let endpoints = usb.configuration.interfaces[0].alternates[0].endpoints;
+      let inEndpoint, outEndpoint;
+      for (let i = 0; i < endpoints.length; i++) {
+        if ("out" === endpoints[i].direction)
+          outEndpoint = endpoints[i].endpointNumber;
+        if ("in" === endpoints[i].direction)
+          inEndpoint = endpoints[i].endpointNumber;
+      }
+      if ((undefined === inEndpoint) || (undefined === outEndpoint))
+        throw new Error("can't find endpoints");
+      this.inEndpoint = inEndpoint;
+      this.outEndpoint = outEndpoint;
       return usb;
     }
     this.usb = await navigator.usb.requestDevice({ filters });
@@ -706,7 +718,7 @@ export class DeviceConnectionUsb extends DeviceConnection {
     try {
       while (true) {
         if (this.usb === undefined) return;
-        const result = await this.usb.transferIn(1, 32 << 10);
+        const result = await this.usb.transferIn(this.inEndpoint, 32 << 10);
         this.usbReceive(new Uint8Array(result.data.buffer));
       }
     } catch (e) {
@@ -720,7 +732,7 @@ export class DeviceConnectionUsb extends DeviceConnection {
     if ('string' == typeof data) {
       const preamble = `${crlf}<?xs.${this.currentMachine}?>${crlf}`;
       data = this.encoder.encode(preamble + data);
-      await this.usb.transferOut(1, data);
+      await this.usb.transferOut(this.outEndpoint, data);
     } else {
       let preamble: any = `${crlf}<?xs#${this.currentMachine}?>`;
       preamble = this.encoder.encode(preamble);
@@ -730,7 +742,7 @@ export class DeviceConnectionUsb extends DeviceConnection {
       buffer[preamble.length] = (payload.length >> 8) & 0xff;
       buffer[preamble.length + 1] = payload.length & 0xff;
       buffer.set(payload, preamble.length + 2);
-      await this.usb.transferOut(1, buffer.buffer);
+      await this.usb.transferOut(this.outEndpoint, buffer.buffer);
     }
   }
   async disconnect() {
@@ -796,7 +808,7 @@ export class DeviceConnectionUsb extends DeviceConnection {
           this.onReceive(message);
         } else {
           dst[dstIndex - 2] = 0;
-          //@@				if (offset > 2) fprintf(stderr, "%s\n", self->buffer);
+          //@@        if (offset > 2) fprintf(stderr, "%s\n", self->buffer);
         }
         dstIndex = 0;
       }
