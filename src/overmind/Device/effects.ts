@@ -6,9 +6,26 @@ import {
 
 export let connection: DeviceConnection = null;
 
+export let debugListener: any;
+
 export const closeConnection = async () => {
   await connection.disconnect();
   connection = null;
+};
+
+export const removeAllDebugListener = () => {
+  if (connection === null) return;
+  if (debugListener != null) {
+    connection.offAny(debugListener);
+  }
+};
+export const addDebugListener = listener => {
+  if (connection === null) return;
+  if (debugListener != null) {
+    connection.offAny(debugListener);
+  }
+  debugListener = listener;
+  connection.onAny(debugListener);
 };
 
 export const createWifiConnection = (host: string) => {

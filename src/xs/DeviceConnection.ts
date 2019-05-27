@@ -230,8 +230,9 @@ const XsbugMessageParser = (xml: Document): Array<XsbugMessage<any>> => {
       messages.push(XsbugTypeParser[node.nodeName](node));
     } catch (e) {
       if (node && node.nodeName === 'parsererror') {
+        console.log('Malformed data in: ', xml);
         throw new Error(
-          `Malformed data encountered, please try reconnecting to the device.`
+          `Malformed data encountered, please try reconnecting to the device. See console for more info.`
         );
       }
       throw e;
@@ -301,7 +302,6 @@ export type DeviceConnectionEvents = {
 } & DeviceDebuggerEvents;
 
 export class DeviceConnection extends Emittery.Typed<DeviceConnectionEvents> {
-  protected parser: DOMParser;
   protected requestID: number;
   protected pending: PendingRequest[];
 
@@ -309,7 +309,6 @@ export class DeviceConnection extends Emittery.Typed<DeviceConnectionEvents> {
     super();
     this.requestID = 1;
     this.pending = [];
-    this.parser = new DOMParser();
   }
 
   doClearBreakpoint(path: string, line: number) {
@@ -373,6 +372,7 @@ export class DeviceConnection extends Emittery.Typed<DeviceConnectionEvents> {
 
   async doInstall(data: Uint8Array) {
     const deferred = createDeferred<number>();
+    let state = 0;
     let offset = 0;
     let sendOne = max => {
       const use = Math.min(max, data.byteLength - offset);
@@ -384,14 +384,28 @@ export class DeviceConnection extends Emittery.Typed<DeviceConnectionEvents> {
       payload.set(data.slice(offset, offset + use), 4);
       this.sendBinaryCommand(3, payload, function(code) {
         offset += max;
-        if (offset >= data.byteLength) {
-          deferred.resolve(code);
-          return;
+        switch (state) {
+          case 0: // Jump over signature
+            state = 1;
+            offset = 8;
+            sendOne(1024);
+            break;
+          case 1: // Upload till end
+            if (offset >= data.byteLength) {
+              state = 2;
+              offset = 4;
+              sendOne(4);
+              return;
+            }
+            sendOne(1024);
+            break;
+          case 2: // Done
+            deferred.resolve(code);
+            break;
         }
-        sendOne(1024);
       });
     };
-    sendOne(16);
+    sendOne(4);
     return deferred.promise;
   }
   doRestart() {
@@ -448,7 +462,7 @@ export class DeviceConnection extends Emittery.Typed<DeviceConnectionEvents> {
   // Debugging functions
   handleDebuggingMessage(raw: string) {
     const msg = XsbugMessageParser(
-      this.parser.parseFromString(raw, 'application/xml')
+      new DOMParser().parseFromString(raw, 'application/xml')
     );
     msg.forEach(message => {
       switch (message.type) {
@@ -614,8 +628,6 @@ type DeviceUsbOptions = {
 };
 
 export class DeviceConnectionUsb extends DeviceConnection {
-  private readonly decoder: TextDecoder;
-  private readonly encoder: TextEncoder;
   private readonly baud: number;
   private dst: Uint8Array;
 
@@ -632,12 +644,11 @@ export class DeviceConnectionUsb extends DeviceConnection {
 
   constructor(options: DeviceUsbOptions = {}) {
     super();
-    this.encoder = new TextEncoder();
-    this.decoder = new TextDecoder();
-    this.baud = options.baud || 921600;
-    this.dst = new Uint8Array(32 << 10);
 
-    this.on(XsbugMessageType.Login, () => {
+    this.baud = options.baud || 921600;
+    this.dst = new Uint8Array(32768);
+
+    this.once(XsbugMessageType.Login).then(() => {
       this.deviceReady.resolve(this);
     });
   }
@@ -646,9 +657,14 @@ export class DeviceConnectionUsb extends DeviceConnection {
     this.binary = false;
     this.dstIndex = 0;
     this.currentMachine = undefined;
+    this.deviceReady = undefined;
   }
 
   async connect() {
+    if (this.deviceReady !== undefined) {
+      return this.deviceReady.promise;
+    }
+
     this.reset();
 
     this.deviceReady = createDeferred<DeviceConnectionUsb>();
@@ -689,37 +705,37 @@ export class DeviceConnectionUsb extends DeviceConnection {
     await this.usb.controlTransferOut({
       requestType: 'vendor',
       recipient: 'device',
-      request: 0,
-      index: 0,
-      value: 1
+      request: 0x00,
+      index: 0x00,
+      value: 0x01
     });
     await this.usb.controlTransferOut({
       requestType: 'vendor',
       recipient: 'device',
-      request: 7,
-      index: 0,
+      request: 0x07,
+      index: 0x00,
       value: DTR.MASK | RTS.MASK | RTS.SET | DTR.CLEAR
     });
     await this.usb.controlTransferOut({
       requestType: 'vendor',
       recipient: 'device',
-      request: 1,
-      index: 0,
+      request: 0x01,
+      index: 0x00,
       value: 3686400 / this.baud
     });
     await this.usb.controlTransferOut({
       requestType: 'vendor',
       recipient: 'device',
-      request: 18,
-      index: 0,
-      value: 15 // transmit & receive
+      request: 0x12,
+      index: 0x00,
+      value: 0x0f // transmit & receive
     });
     await new Promise(resolve => setTimeout(resolve, 100));
     return this.usb.controlTransferOut({
       requestType: 'vendor',
       recipient: 'device',
-      request: 7,
-      index: 0,
+      request: 0x07,
+      index: 0x00,
       value: DTR.MASK | DTR.SET
     });
   }
@@ -752,11 +768,11 @@ export class DeviceConnectionUsb extends DeviceConnection {
   async send(data: string | ArrayBuffer) {
     if ('string' == typeof data) {
       const preamble = `${crlf}<?xs.${this.currentMachine}?>${crlf}`;
-      data = this.encoder.encode(preamble + data);
+      data = new TextEncoder().encode(preamble + data);
       await this.usb.transferOut(this.outEndpoint, data);
     } else {
       let preamble: any = `${crlf}<?xs#${this.currentMachine}?>`;
-      preamble = this.encoder.encode(preamble);
+      preamble = new TextEncoder().encode(preamble);
       let payload = new Uint8Array(data);
       let buffer = new Uint8Array(preamble.length + 2 + payload.length);
       buffer.set(preamble, 0);
@@ -825,7 +841,7 @@ export class DeviceConnectionUsb extends DeviceConnection {
           dst[dstIndex - 4] == 'g'.charCodeAt(0) &&
           dst[dstIndex - 3] == '>'.charCodeAt(0)
         ) {
-          const message = this.decoder.decode(dst.subarray(0, dstIndex));
+          const message = new TextDecoder().decode(dst.subarray(0, dstIndex));
           this.onReceive(message);
         } else {
           dst[dstIndex - 2] = 0;

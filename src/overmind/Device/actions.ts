@@ -71,8 +71,12 @@ export const installMod: Action<Uint8Array> = pipe(
 
     effects.Device.connection.doSetPreference('config', 'when', configWhen);
     actions.Log.addMessage('Uploading...');
+
     effects.Device.connection.doStep();
+    await effects.Device.connection.once(XsbugMessageType.Break);
+
     await effects.Device.connection.doInstall(payload);
+
     actions.Log.addMessage('...done');
     effects.Device.connection.doRestart();
   }),

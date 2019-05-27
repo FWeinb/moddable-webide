@@ -29,6 +29,7 @@ import {
   ConnectionEvent,
   ConnectionErrorMessage
 } from '../../xs/DeviceConnection';
+import { CompilerState } from '../Compiler/state';
 
 export const syncBreakpoints: Operator = run(({ state, effects }) => {
   effects.Device.connection &&
@@ -64,12 +65,10 @@ export const setDebugState = (newState: DebugState) =>
   });
 
 export const ensureConnection: Operator<any> = when(
-  ({ effects }) => effects.Device.connection !== null,
+  ({ effects }) => effects.Device.connection === null,
   {
-    // Connected
-    true: noop(),
     // Disconnected
-    false: pipe(
+    true: pipe(
       setConnectionState(ConnectionState.CONNECTING),
       mutate(({ state, effects }) => {
         switch (state.Device.connectionType) {
@@ -83,11 +82,14 @@ export const ensureConnection: Operator<any> = when(
             break;
         }
       })
-    )
+    ),
+    // Connected
+    false: noop()
   }
 );
 export const connectWithoutDebugger: Operator<any> = mutate(
   async ({ state, effects }) => {
+    effects.Device.removeAllDebugListener();
     await effects.Device.connection.connect();
     state.Device.connectionState = ConnectionState.CONNECTED;
   }
@@ -95,8 +97,8 @@ export const connectWithoutDebugger: Operator<any> = mutate(
 
 export const connectWithDebugger: Operator<any> = pipe(
   setDebugState(DebugState.CONNECTING),
-  mutate(async ({ effects, state, actions }) => {
-    effects.Device.connection.onAny((_, event) => {
+  mutate(async ({ effects, actions }) => {
+    effects.Device.addDebugListener((_, event) => {
       actions.Device.handleConnectionEvents(event);
     });
     await effects.Device.connection.connect();
@@ -110,6 +112,9 @@ export const catchConnectionError: Operator = catchError(
   ({ state, actions }, e: any) => {
     state.Device.connectionState = ConnectionState.ERROR;
     state.Device.debug.state = DebugState.DISCONNECTED;
+    if (state.Compiler.state === CompilerState.BUSY) {
+      state.Compiler.state = CompilerState.READY;
+    }
     actions.Log.addErrorMessage(e.toString());
     if (e.NETWORK_ERR === e.code) {
       actions.Log.addErrorMessage(
