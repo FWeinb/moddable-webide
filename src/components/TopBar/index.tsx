@@ -34,8 +34,8 @@ const UsbSettings: React.FC = () => {
         marginRight: '.5em'
       }}
     >
-      <option value="921600">ESP8266 (921,600)</option>
       <option value="460800">ESP32 (460,800)</option>
+      <option value="921600">ESP8266 (921,600)</option>
     </select>
   );
 };

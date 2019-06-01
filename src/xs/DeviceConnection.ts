@@ -354,7 +354,7 @@ export class DeviceConnection extends Emittery.Typed<DeviceConnectionEvents> {
     this.sendCommand(`<toggle id="${value}"/>`);
   }
 
-  private sendCommand(msg: String) {
+  private sendCommand(msg: string) {
     this.send(crlf + msg + crlf);
   }
 
@@ -375,6 +375,7 @@ export class DeviceConnection extends Emittery.Typed<DeviceConnectionEvents> {
     let state = 0;
     let offset = 0;
     let sendOne = max => {
+      console.log('install', offset, max);
       const use = Math.min(max, data.byteLength - offset);
       const payload = new Uint8Array(4 + use);
       payload[0] = (offset >> 24) & 0xff;
@@ -453,8 +454,10 @@ export class DeviceConnection extends Emittery.Typed<DeviceConnectionEvents> {
 
   public onReceive(raw: string | ArrayBuffer): void {
     if (raw instanceof ArrayBuffer) {
+      tracePacket('>>', new Uint8Array(raw));
       this.handleControlMessage(raw);
     } else if ('string' === typeof raw) {
+      console.log(raw);
       this.handleDebuggingMessage(raw);
     }
   }
@@ -647,10 +650,6 @@ export class DeviceConnectionUsb extends DeviceConnection {
 
     this.baud = options.baud || 921600;
     this.dst = new Uint8Array(32768);
-
-    this.once(XsbugMessageType.Login).then(() => {
-      this.deviceReady.resolve(this);
-    });
   }
 
   reset() {
@@ -676,67 +675,139 @@ export class DeviceConnectionUsb extends DeviceConnection {
 
     await this.deviceReady.promise;
   }
+  initalizeUSB(usb) {
+    this.usb = usb;
+    let endpoints = usb.configuration.interfaces[0].alternates[0].endpoints;
+    let inEndpoint, outEndpoint;
+    for (let i = 0; i < endpoints.length; i++) {
+      if ('out' === endpoints[i].direction)
+        outEndpoint = endpoints[i].endpointNumber;
+      if ('in' === endpoints[i].direction)
+        inEndpoint = endpoints[i].endpointNumber;
+    }
+    if (undefined === inEndpoint || undefined === outEndpoint)
+      throw new Error("can't find endpoints");
+    this.inEndpoint = inEndpoint;
+    this.outEndpoint = outEndpoint;
+    return usb;
+  }
   async getDevice() {
     const devices = await navigator.usb.getDevices();
-
     if (devices.length > 0) {
-      const usb = devices[0];
-      this.usb = usb;
-      let endpoints = usb.configuration.interfaces[0].alternates[0].endpoints;
-      let inEndpoint, outEndpoint;
-      for (let i = 0; i < endpoints.length; i++) {
-        if ('out' === endpoints[i].direction)
-          outEndpoint = endpoints[i].endpointNumber;
-        if ('in' === endpoints[i].direction)
-          inEndpoint = endpoints[i].endpointNumber;
-      }
-      if (undefined === inEndpoint || undefined === outEndpoint)
-        throw new Error("can't find endpoints");
-      this.inEndpoint = inEndpoint;
-      this.outEndpoint = outEndpoint;
-      return usb;
+      this.initalizeUSB(devices[0]);
+    } else {
+      this.initalizeUSB(await navigator.usb.requestDevice({ filters }));
     }
-    return (this.usb = await navigator.usb.requestDevice({ filters }));
+    return this.usb;
   }
   async openDevice() {
     await this.usb.open();
     await this.usb.selectConfiguration(1);
     await this.usb.claimInterface(0);
+
+    // mimic serial
     await this.usb.controlTransferOut({
       requestType: 'vendor',
       recipient: 'device',
-      request: 0x00,
+      request: 0x00, // IFC_ENABLE
+      index: 0x00,
+      value: 0x00 // DISABLE
+    });
+    await this.usb.controlTransferOut({
+      requestType: 'vendor',
+      recipient: 'device',
+      request: 0x00, // IFC_ENABLE
+      index: 0x00,
+      value: 0x01 // ENABLE
+    });
+    await this.usb.controlTransferOut({
+      requestType: 'vendor',
+      recipient: 'device',
+      request: 0x15, // EMBED_EVENTS
+      index: 0x00,
+      value: 0
+    });
+    await this.usb.controlTransferOut(
+      {
+        requestType: 'vendor',
+        recipient: 'device',
+        request: 0x1e, // SET_BAUDRATE
+        index: 0x00,
+        value: 0
+      },
+      Uint8Array.of(0x00, 0x08, 0x07, 0x00)
+    ); // little endian 115200 * 4
+    await this.usb.controlTransferOut({
+      requestType: 'vendor',
+      recipient: 'device',
+      request: 0x03, // SET_LINE_CTL
+      index: 0x00,
+      value: (8 << 8) | 0 // 8 data bits, no parity, one stop bit
+    });
+    await this.usb.controlTransferOut({
+      requestType: 'vendor',
+      recipient: 'device',
+      request: 0x07, // SET_MHS
+      index: 0x00,
+      value: 0x0300
+    });
+
+    // Serial is doing a read here
+
+    await this.usb.controlTransferOut(
+      {
+        requestType: 'vendor',
+        recipient: 'device',
+        request: 0x13, // SET_FLOW
+        index: 0x00,
+        value: 0 // NONE!
+      },
+      new Uint8Array(16)
+    );
+    await this.usb.controlTransferOut({
+      requestType: 'vendor',
+      recipient: 'device',
+      request: 0x07, // SET_MHS
+      index: 0x00,
+      value: 0x0303
+    });
+
+    //We
+    await this.usb.controlTransferOut({
+      requestType: 'vendor',
+      recipient: 'device',
+      request: 0x00, // IFC_ENABLE
       index: 0x00,
       value: 0x01
     });
     await this.usb.controlTransferOut({
       requestType: 'vendor',
       recipient: 'device',
-      request: 0x07,
+      request: 0x07, // SET_MHS
       index: 0x00,
       value: DTR.MASK | RTS.MASK | RTS.SET | DTR.CLEAR
     });
     await this.usb.controlTransferOut({
       requestType: 'vendor',
       recipient: 'device',
-      request: 0x01,
+      request: 0x01, // SET_BAUDRATE
       index: 0x00,
       value: 3686400 / this.baud
     });
     await this.usb.controlTransferOut({
       requestType: 'vendor',
       recipient: 'device',
-      request: 0x12,
+      request: 0x12, // PURGE
       index: 0x00,
       value: 0x0f // transmit & receive
     });
     await new Promise(resolve => setTimeout(resolve, 100));
-    return this.usb.controlTransferOut({
+    await this.usb.controlTransferOut({
       requestType: 'vendor',
       recipient: 'device',
-      request: 0x07,
+      request: 0x07, // SET_MHS
       index: 0x00,
-      value: DTR.MASK | DTR.SET
+      value: RTS.MASK | RTS.CLEAR
     });
   }
   async readLoop() {
@@ -756,7 +827,7 @@ export class DeviceConnectionUsb extends DeviceConnection {
         this.usbReceive(new Uint8Array(result.data.buffer));
       }
     } catch (e) {
-      if (e.message === 'The transfer was cancelled.') {
+      if (this.usb === undefined) {
         return;
       }
       this.emit(DeviceConnectionEventTypes.ConnectionError, {
@@ -827,8 +898,15 @@ export class DeviceConnectionUsb extends DeviceConnection {
             dst.subarray(dstIndex - mxTagSize, dstIndex)
           ))
         ) {
-          if (machine.flag) this.currentMachine = machine.value;
-          else this.currentMachine = undefined;
+          if (machine.flag) {
+            this.currentMachine = machine.value;
+            this.deviceReady.resolve(this);
+          } else {
+            // ???: Somtimes flag will be false here
+            // this will reset currentMachine an break stuff
+            // don't do that know
+            //this.currentMachine = undefined;
+          }
           this.binary = machine.binary;
         } else if (
           dstIndex >= 10 &&
@@ -880,5 +958,25 @@ export class DeviceConnectionUsb extends DeviceConnection {
     if (dst[13] != '?'.charCodeAt(0)) return;
     if (dst[14] != '>'.charCodeAt(0)) return;
     return { value: value.toString(16).padStart(8, '0'), flag, binary };
+  }
+}
+
+function tracePacket(prefix, bytes) {
+  for (let i = 0; i < bytes.length; i += 16) {
+    let line = prefix;
+    let end = i + 16;
+    if (end > bytes.length) end = bytes.length;
+    for (let j = i; j < end; j++) {
+      let byte = bytes[j].toString(16);
+      if (byte.length < 2) byte = '0' + byte;
+      line += byte + ' ';
+    }
+    line += '   ';
+    for (let j = i; j < end; j++) {
+      let byte = bytes[j];
+      if (32 <= byte && byte < 128) line += String.fromCharCode(byte);
+      else line += '.';
+    }
+    console.log(line);
   }
 }

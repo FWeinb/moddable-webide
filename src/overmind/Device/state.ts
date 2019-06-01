@@ -59,7 +59,7 @@ export type Device = {
 
 const state: Device = {
   host: 'runmod.local',
-  baudRate: 921600,
+  baudRate: 460800,
   connectionType: ConnectionType.USB,
   connectionState: ConnectionState.DISCONNECTED,
   debug: {
