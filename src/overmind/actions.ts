@@ -1,7 +1,7 @@
-import { Action } from 'overmind';
+import { AsyncAction, Action } from 'overmind';
 import { SidebarView } from './rootState';
 
-export const askNewProject: Action = async ({ actions, effects }) => {
+export const askNewProject: AsyncAction = async ({ actions, effects }) => {
   const projectName = window.prompt('Input Project Name:', 'NewProject');
   if (projectName) {
     if (await effects.Storage.hasProject(projectName)) {
@@ -32,7 +32,7 @@ export const askRemoveProject: Action<string> = ({ actions }, projectName) => {
   }
 };
 
-export const importGist: Action<string> = async (
+export const importGist: AsyncAction<string> = async (
   { actions, effects },
   gistId
 ) => {

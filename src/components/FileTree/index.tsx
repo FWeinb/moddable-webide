@@ -9,9 +9,7 @@ import React, {
   useRef
 } from 'react';
 
-import { __EXPERIMENTAL_DND_HOOKS_THAT_MAY_CHANGE_AND_BREAK_MY_BUILD__ as dnd } from 'react-dnd';
-const { useDrop } = dnd;
-
+import { useDrop } from 'react-dnd';
 import { NativeTypes } from 'react-dnd-html5-backend';
 
 import { useOvermind } from '../../overmind';
