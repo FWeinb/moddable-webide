@@ -1,4 +1,4 @@
-import { Action, pipe, mutate, run, json } from 'overmind';
+import { Action, pipe, mutate, run, json, AsyncAction } from 'overmind';
 
 import * as o from './operators';
 import { generateNodeId } from './utils';
@@ -24,7 +24,7 @@ export const openProject: Action<string> = pipe(
   o.openDefaultFile
 );
 
-export const removeProject: Action<string> = async (
+export const removeProject: AsyncAction<string> = async (
   { state, actions, effects },
   projectName
 ) => {

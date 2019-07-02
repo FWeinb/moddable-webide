@@ -1,7 +1,7 @@
-import { Action, json } from 'overmind';
+import { Action, json, AsyncAction } from 'overmind';
 import { CompilerState } from './state';
 
-export const load: Action = async ({ state, actions, effects }) => {
+export const load: AsyncAction = async ({ state, actions, effects }) => {
   const xscl = await effects.Compiler.load();
   state.Compiler.state = CompilerState.READY;
   xscl.addMessageListener(message => {
@@ -15,7 +15,11 @@ export const load: Action = async ({ state, actions, effects }) => {
   });
 };
 
-export const compileAndUpload: Action = async ({ state, effects, actions }) => {
+export const compileAndUpload: AsyncAction = async ({
+  state,
+  effects,
+  actions
+}) => {
   await actions.Editor.saveAllFiles();
 
   try {
